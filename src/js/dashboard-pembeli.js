@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -19,7 +19,7 @@ function checkAuth() {
     // Check if user exists and is pembeli
     if (!user || !user.username || user.role !== 'pembeli') {
         console.log('Auth check failed:', user);
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
         return;
     }
     
@@ -35,7 +35,7 @@ function setupEventListeners() {
     // Logout button
     document.getElementById('logoutBtn').addEventListener('click', function() {
         localStorage.removeItem('platoo_user');
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
     });
     
     // Search functionality
@@ -145,7 +145,7 @@ function createRestaurantCard(restaurant) {
     card.onclick = () => viewRestaurantCatalog(restaurant.id_penjual);
     
     // Use restaurant photo if available, otherwise use emoji
-    const emojis = ['🍕', '🍔', '🍜', '🍱', '🍝', '🥘', '🍛', '🍲', '🥗', '🍖'];
+    const emojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
     
     const hasPhoto = restaurant.foto_url && restaurant.foto_url.trim() !== '';
@@ -160,7 +160,7 @@ function createRestaurantCard(restaurant) {
             }
             ${restaurant.ads ? '<div class="ads-badge">Ad</div>' : ''}
             <div class="card-badge">
-                ⭐ ${rating}
+                ? ${rating}
             </div>
         </div>
         <div class="card-content">

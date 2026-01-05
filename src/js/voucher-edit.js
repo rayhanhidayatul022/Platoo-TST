@@ -1,171 +1,261 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
+/**
+ * Voucher Edit Form
+ * Integrated with Voucher Microservice API
+ */
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let voucherService;
+let voucherId = null;
+let currentVoucher = null;
 
-function showModal(title, message, type = 'success', showCancel = false) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('customModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalMessage = document.getElementById('modalMessage');
-        const modalIcon = document.getElementById('modalIcon');
-        const modalConfirm = document.getElementById('modalConfirm');
-        const modalCancel = document.getElementById('modalCancel');
-        
-        modalTitle.textContent = title;
-        modalMessage.textContent = message;
-        
-        modalIcon.className = 'modal-icon ' + type;
-        
-        if (showCancel) {
-            modalCancel.style.display = 'block';
-        } else {
-            modalCancel.style.display = 'none';
+async function loadVoucherData() {
+    try {
+        // Ensure voucherService is initialized
+        if (!voucherService) {
+            console.error('❌ VoucherService not initialized!');
+            await Utils.showAlert('Service belum siap, silakan refresh halaman', 'error');
+            return;
         }
         
-        modal.classList.add('show');
+        // Get voucher ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        voucherId = urlParams.get('id');
+
+        console.log('📥 Loading voucher with ID:', voucherId);
+
+        if (!voucherId) {
+            await Utils.showAlert('ID voucher tidak ditemukan!', 'error');
+            window.location.href = 'voucher-catalog.html';
+            return;
+        }
+
+        Utils.showLoading(true);
+
+        // Fetch voucher data from API
+        console.log('🔍 Fetching voucher from API...');
+        console.log('🔧 VoucherService:', voucherService);
+        console.log('🌐 Base URL:', voucherService.baseUrl);
         
-        modalConfirm.onclick = () => {
-            modal.classList.remove('show');
-            resolve(true);
-        };
+        const vouchers = await voucherService.getAllVouchers();
+        console.log('📦 All vouchers:', vouchers);
         
-        modalCancel.onclick = () => {
-            modal.classList.remove('show');
-            resolve(false);
-        };
+        // Find voucher by ID
+        currentVoucher = vouchers.find(v => v.id === voucherId || v.id === parseInt(voucherId));
         
-        modal.onclick = (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('show');
-                resolve(false);
+        if (!currentVoucher) {
+            console.error('❌ Voucher not found with ID:', voucherId);
+            await Utils.showAlert('Voucher tidak ditemukan!', 'error');
+            window.location.href = 'voucher-catalog.html';
+            return;
+        }
+        
+        console.log('✅ Voucher found:', currentVoucher);
+
+        // Populate form fields
+        document.getElementById('name').value = currentVoucher.name || '';
+        document.getElementById('code').value = currentVoucher.code || '';
+        
+        // Set discount type
+        if (currentVoucher.discount_type === 'FIXED') {
+            document.getElementById('discount_type_fixed').checked = true;
+        } else {
+            document.getElementById('discount_type_percent').checked = true;
+        }
+
+        document.getElementById('discount_value').value = currentVoucher.discount_value || 0;
+        document.getElementById('min_order_amount').value = currentVoucher.min_order_amount || 0;
+        document.getElementById('max_total_redemptions').value = currentVoucher.max_total_redemptions || 0;
+        
+        // Format dates for input (YYYY-MM-DD)
+        if (currentVoucher.start_at) {
+            try {
+                const startDate = new Date(currentVoucher.start_at);
+                const formattedStart = startDate.toISOString().split('T')[0];
+                document.getElementById('start_at').value = formattedStart;
+                console.log('✅ Start date set:', formattedStart);
+            } catch (err) {
+                console.error('Error formatting start date:', err);
             }
-        };
-    });
-}
-
-function showAlert(message, type = 'success') {
-    const titles = {
-        success: 'Berhasil!',
-        error: 'Gagal!',
-        warning: 'Peringatan!',
-        question: 'Konfirmasi'
-    };
-    return showModal(titles[type] || 'Informasi', message, type, false);
-}
-
-function showConfirm(message, title = 'Konfirmasi') {
-    return showModal(title, message, 'question', true);
-}
-
-async function getVoucherIdFromUrl(){
-    const urlParams = new URLSearchParams(window.location.search);
-    const voucherId = urlParams.get('id');
-    
-    if (!voucherId) {
-        await showAlert('ID voucher tidak ditemukan!', 'error');
-        window.location.href = '/voucher-catalog.html';
-        return null;
-    }
-    
-    return voucherId;
-}
-
-async function fetchVoucherData(voucherId) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('voucher')
-            .select('*')
-            .eq('voucher_id', voucherId)
-            .single();
+        }
         
-        if (error) throw error;
-        return data;
-        
+        if (currentVoucher.end_at) {
+            try {
+                const endDate = new Date(currentVoucher.end_at);
+                const formattedEnd = endDate.toISOString().split('T')[0];
+                document.getElementById('end_at').value = formattedEnd;
+                console.log('✅ End date set:', formattedEnd);
+            } catch (err) {
+                console.error('Error formatting end date:', err);
+            }
+        }
+
+        document.getElementById('is_active').checked = currentVoucher.is_active === true || currentVoucher.is_active === 'true';
+
+        console.log('✅ Form populated with voucher data');
+        Utils.showLoading(false);
+
     } catch (error) {
-        console.error('Error fetching voucher data:', error);
-        await showAlert('Gagal memuat data voucher.', 'error');
-        return null;
-    }
-}
+        console.error('❌ Error loading voucher:', error);
+        Utils.showLoading(false);
 
-function populateForm(voucherData) {
-    document.getElementById('catalog_id').value = voucherData.voucher_id;
-    document.getElementById('resto_id').value = voucherData.resto_id;
-    document.getElementById('nama_voucher').value = voucherData.nama_voucher;
-    document.getElementById('stok').value = voucherData.stok;
-    document.getElementById('harga').value = voucherData.potongan;
-    document.getElementById('minimal').value = voucherData.minimal;
-    document.getElementById('expiry_date').value = voucherData.expired_date;
+        const errorMsg = Utils.handleApiError(error);
+        await Utils.showAlert(`Gagal memuat data voucher: ${errorMsg}`, 'error');
+        window.location.href = 'voucher-catalog.html';
+    }
 }
 
 async function handleSubmit(e) {
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🚀 Update form submitted!');
     
     try {
-        const catalogId = document.getElementById('catalog_id').value;
-        const namaVoucher = document.getElementById('nama_voucher').value;
-        const kuota = parseInt(document.getElementById('stok').value);
-        const potonganHarga = parseInt(document.getElementById('harga').value);
-        const minimalTransaksi = parseInt(document.getElementById('minimal').value);
-        const expiryDate = document.getElementById('expiry_date').value;
-        
-        if (!namaVoucher.trim() || isNaN(kuota) || kuota < 0 || isNaN(potonganHarga) || potonganHarga <= 0 || !expiryDate) {
-            await showAlert('Mohon lengkapi semua field yang wajib!', 'warning');
+        if (!Utils.requireAuth()) {
             return;
         }
-        
+
+        if (!voucherId) {
+            await Utils.showAlert('ID voucher tidak valid!', 'error');
+            return;
+        }
+
         const submitBtn = document.querySelector('.btn-submit');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Menyimpan...';
+        const originalHTML = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="animation: spin 0.8s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Menyimpan...';
         submitBtn.disabled = true;
 
-        const updateData = {
-            nama_voucher: namaVoucher,
-            stok: kuota,
-            potongan: potonganHarga,
-            minimal: minimalTransaksi,
-            expired_date: expiryDate
+        // Collect form data
+        const startDate = new Date(document.getElementById('start_at').value);
+        const endDate = new Date(document.getElementById('end_at').value);
+        
+        // Set time to start of day for start_at and end of day for end_at
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        const formData = {
+            name: document.getElementById('name').value.trim(),
+            code: document.getElementById('code').value.trim().toUpperCase(),
+            discount_type: document.querySelector('input[name="discount_type"]:checked').value,
+            discount_value: parseInt(document.getElementById('discount_value').value),
+            min_order_amount: parseInt(document.getElementById('min_order_amount').value) || 0,
+            max_total_redemptions: parseInt(document.getElementById('max_total_redemptions').value),
+            start_at: startDate.toISOString(),
+            end_at: endDate.toISOString(),
+            is_active: document.getElementById('is_active').checked
         };
+
+        console.log('📦 Updated data:', formData);
+
+        // Validation
+        if (!formData.name || !formData.code) {
+            await Utils.showAlert('Nama dan kode voucher wajib diisi!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (formData.discount_type === 'PERCENT' && (formData.discount_value < 1 || formData.discount_value > 100)) {
+            await Utils.showAlert('Persentase diskon harus antara 1-100!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (formData.discount_value <= 0) {
+            await Utils.showAlert('Nilai diskon harus lebih dari 0!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (formData.min_order_amount < 0) {
+            await Utils.showAlert('Minimal transaksi tidak boleh negatif!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (formData.max_total_redemptions < 1) {
+            await Utils.showAlert('Kuota voucher minimal 1!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (new Date(formData.end_at) <= new Date(formData.start_at)) {
+            await Utils.showAlert('Tanggal berakhir harus setelah tanggal mulai!', 'warning');
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return;
+        }
+
+        console.log('📤 Updating voucher via API...');
+
+        // Update voucher via API
+        const response = await voucherService.updateVoucher(voucherId, formData);
         
-        console.log('Updating to database...');
-        const { data, error } = await supabaseClient
-            .from('voucher')
-            .update(updateData)
-            .eq('voucher_id', catalogId);
-        
-        if (error) throw error;
-        
-        await showAlert('Voucher berhasil diupdate!', 'success');
-        
-        window.location.href = '/voucher-catalog.html';
-        
-    } catch (error) {
-        console.error('Error submitting form:', error);
-        await showAlert('Gagal menambahkan voucher. Silakan coba lagi.', 'error');
-        
-        const submitBtn = document.querySelector('.btn-submit');
-        submitBtn.textContent = 'Tambah';
+        console.log('✅ Voucher updated:', response);
+
+        // Reset button
+        submitBtn.innerHTML = originalHTML;
         submitBtn.disabled = false;
+
+        await Utils.showAlert('Voucher berhasil diperbarui!', 'success');
+        
+        window.location.href = 'voucher-catalog.html';
+        
+        return false;
+
+    } catch (error) {
+        console.error('❌ Error updating voucher:', error);
+        
+        if (submitBtn) {
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+        }
+
+        const errorMsg = Utils.handleApiError(error);
+        await Utils.showAlert(`Gagal memperbarui voucher: ${errorMsg}`, 'error');
+        
+        return false;
     }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Voucher edit form page loaded');
+    console.log('✨ Voucher Edit page loaded');
     
-    const voucherId = await getVoucherIdFromUrl();
-    if (!voucherId) return;
-    
-    // Fetch existing data
-    const voucherData = await fetchVoucherData(voucherId);
-    if (!voucherData) {
-        await showAlert('Data voucher tidak ditemukan!', 'error');
-        window.location.href = '/voucher-catalog.html';
+    // Initialize service
+    try {
+        console.log('🔧 Initializing VoucherService...');
+        voucherService = new VoucherService();
+        console.log('✅ VoucherService initialized:', voucherService);
+        console.log('✅ Base URL:', voucherService.baseUrl);
+    } catch (error) {
+        console.error('❌ Error initializing VoucherService:', error);
+        await Utils.showAlert('Gagal menginisialisasi service voucher', 'error');
         return;
     }
     
-    populateForm(voucherData);
+    // Load existing voucher data after service is initialized
+    await loadVoucherData();
     
-    const form = document.getElementById('foodForm');
-    form.addEventListener('submit', handleSubmit);
+    const form = document.getElementById('voucherForm');
+    if (form) {
+        console.log('✅ Form found, attaching submit handler');
+        
+        // Remove existing handlers
+        form.onsubmit = null;
+        
+        // Add submit handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await handleSubmit(e);
+            return false;
+        });
+        
+        console.log('✅ Submit handler attached');
+    } else {
+        console.error('❌ Form not found!');
+    }
 });

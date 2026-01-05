@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -43,13 +43,13 @@ async function initializeCheckout() {
     if (!userDataJson) {
         // Tidak ada user yang login - redirect ke login
         console.warn('No user logged in, redirecting to login page');
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
         return;
     }
     
     try {
         currentUser = JSON.parse(userDataJson);
-        console.log('✅ User logged in for checkout:', currentUser);
+        console.log('? User logged in for checkout:', currentUser);
         
         // Fetch email from pembeli table
         const userId = currentUser.id || currentUser.id_pembeli || currentUser.pembeli_id;
@@ -63,15 +63,15 @@ async function initializeCheckout() {
             if (!pembeliError && pembeliData) {
                 currentUser.email = pembeliData.email;
                 currentUser.nama = pembeliData.nama;
-                console.log('✅ Email fetched from database:', currentUser.email);
+                console.log('? Email fetched from database:', currentUser.email);
             } else {
-                console.warn('⚠️ Failed to fetch email from pembeli table:', pembeliError);
+                console.warn('?? Failed to fetch email from pembeli table:', pembeliError);
             }
         }
     } catch (err) {
         console.error('Invalid user data in localStorage:', err);
         localStorage.removeItem('platoo_user');
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
         return;
     }
 
@@ -85,7 +85,7 @@ async function initializeCheckout() {
     let pendingOrder;
     try {
         pendingOrder = JSON.parse(cartData);
-        console.log('📦 Pending order loaded:', pendingOrder);
+        console.log('?? Pending order loaded:', pendingOrder);
     } catch (err) {
         console.error('Error parsing cart data:', err);
         showEmptyCart();
@@ -99,8 +99,8 @@ async function initializeCheckout() {
         return;
     }
     
-    console.log('🏪 Full restaurant data from localStorage:', pendingOrder.restaurant);
-    console.log('🏪 Restaurant keys:', Object.keys(pendingOrder.restaurant));
+    console.log('?? Full restaurant data from localStorage:', pendingOrder.restaurant);
+    console.log('?? Restaurant keys:', Object.keys(pendingOrder.restaurant));
     
     // Convert pending order format to cart format
     orderData.items = [{
@@ -109,7 +109,7 @@ async function initializeCheckout() {
         price: pendingOrder.item.harga || pendingOrder.item.price,
         quantity: pendingOrder.quantity || 1,
         photo_url: pendingOrder.item.foto_menu || pendingOrder.item.photo_url || pendingOrder.item.foto,
-        emoji: pendingOrder.item.emoji || '🍽️'
+        emoji: pendingOrder.item.emoji || '???'
     }];
     
     // Get restaurant ID - try all possible field names and log them
@@ -119,7 +119,7 @@ async function initializeCheckout() {
         resto_id: pendingOrder.restaurant.resto_id,
         restaurantId: pendingOrder.restaurant.restaurantId
     };
-    console.log('🔍 Checking possible ID fields:', possibleIds);
+    console.log('?? Checking possible ID fields:', possibleIds);
     
     // Primary: id_penjual from restoran table
     orderData.restaurantId = pendingOrder.restaurant.id_penjual || 
@@ -130,13 +130,13 @@ async function initializeCheckout() {
     // Fallback: try to get from item's resto_id
     if (!orderData.restaurantId && pendingOrder.item.resto_id) {
         orderData.restaurantId = pendingOrder.item.resto_id;
-        console.log('⚠️ Using resto_id from item as fallback:', orderData.restaurantId);
+        console.log('?? Using resto_id from item as fallback:', orderData.restaurantId);
     }
     
     orderData.restaurantInfo = pendingOrder.restaurant;
     
-    console.log('✅ Cart data loaded successfully');
-    console.log('🆔 Final Restaurant ID:', orderData.restaurantId);
+    console.log('? Cart data loaded successfully');
+    console.log('?? Final Restaurant ID:', orderData.restaurantId);
     console.log('Items from cart:', orderData.items);
 
     if (orderData.items.length === 0) {
@@ -146,28 +146,28 @@ async function initializeCheckout() {
 
     // PRIORITAS PERTAMA: Fetch item photos dari database
     try {
-        console.log('🔥 STEP 1: About to fetch item photos...');
+        console.log('?? STEP 1: About to fetch item photos...');
         await fetchItemPhotos();
-        console.log('✅ STEP 1 DONE: Finished fetching item photos');
+        console.log('? STEP 1 DONE: Finished fetching item photos');
         console.log('Items after fetch:', orderData.items);
     } catch (error) {
-        console.error('❌ Error in main fetchItemPhotos call:', error);
+        console.error('? Error in main fetchItemPhotos call:', error);
     }
 
     // Fetch restaurant info
     try {
-        console.log('🔥 STEP 2: Fetching restaurant info...');
+        console.log('?? STEP 2: Fetching restaurant info...');
         await fetchRestaurantInfo();
-        console.log('✅ STEP 2 DONE');
+        console.log('? STEP 2 DONE');
     } catch (error) {
-        console.error('❌ Error fetching restaurant info:', error);
+        console.error('? Error fetching restaurant info:', error);
     }
 
     // Load customer info
     try {
         await loadCustomerInfo(currentUser.id);
     } catch (error) {
-        console.error('❌ Error loading customer info:', error);
+        console.error('? Error loading customer info:', error);
     }
 
     // Populate UI and calculate totals FIRST
@@ -179,7 +179,7 @@ async function initializeCheckout() {
     try {
         await loadAvailableVouchers();
     } catch (error) {
-        console.error('❌ Error loading vouchers:', error);
+        console.error('? Error loading vouchers:', error);
     }
 
     // Show checkout actions
@@ -234,7 +234,7 @@ async function fetchItemPhotos() {
         console.log('Item IDs to fetch:', itemIds);
         
         if (!supabaseClient) {
-            console.error('❌ Supabase is not initialized!');
+            console.error('? Supabase is not initialized!');
             return;
         }
         
@@ -249,16 +249,16 @@ async function fetchItemPhotos() {
         console.log('Supabase response:', { data, error });
         
         if (error) {
-            console.error('❌ Supabase error:', error);
+            console.error('? Supabase error:', error);
             throw error;
         }
         
         if (!data || data.length === 0) {
-            console.warn('⚠️ No data returned from catalog table for IDs:', itemIds);
+            console.warn('?? No data returned from catalog table for IDs:', itemIds);
             return;
         }
         
-        console.log(`✅ Fetched ${data.length} items from catalog:`, data);
+        console.log(`? Fetched ${data.length} items from catalog:`, data);
         
         // Update items dengan data lengkap dari catalog
         orderData.items = orderData.items.map(item => {
@@ -266,7 +266,7 @@ async function fetchItemPhotos() {
             if (catalogItem) {
                 // Gunakan kolom 'foto' dari CSV
                 const photoUrl = catalogItem.foto || '';
-                console.log(`✅ Processing ${catalogItem.nama_makanan}:`, {
+                console.log(`? Processing ${catalogItem.nama_makanan}:`, {
                     catalog_id: catalogItem.catalog_id,
                     foto: catalogItem.foto,
                     finalPhotoUrl: photoUrl
@@ -278,12 +278,12 @@ async function fetchItemPhotos() {
                     nama_makanan: catalogItem.nama_makanan
                 };
             } else {
-                console.warn(`⚠️ No catalog match found for item ID ${item.id}`);
+                console.warn(`?? No catalog match found for item ID ${item.id}`);
                 return item;
             }
         });
         
-        console.log('✅ Final items after update:', orderData.items);
+        console.log('? Final items after update:', orderData.items);
         
         // Update localStorage
         localStorage.setItem('platoo_cart', JSON.stringify({
@@ -293,7 +293,7 @@ async function fetchItemPhotos() {
         
         console.log('=== FETCH ITEM PHOTOS COMPLETED ===');
     } catch (error) {
-        console.error('❌ Error in fetchItemPhotos:', error);
+        console.error('? Error in fetchItemPhotos:', error);
     }
 }
 
@@ -320,9 +320,9 @@ async function loadCustomerInfo(userId) {
 
 async function loadAvailableVouchers() {
     try {
-        console.log('🎟️ Loading vouchers for restaurant ID:', orderData.restaurantId);
+        console.log('??? Loading vouchers for restaurant ID:', orderData.restaurantId);
         const today = new Date().toISOString().split('T')[0];
-        console.log('📅 Today date for comparison:', today);
+        console.log('?? Today date for comparison:', today);
 
         // Filter vouchers by restaurant ID
         const { data, error } = await supabaseClient
@@ -330,26 +330,26 @@ async function loadAvailableVouchers() {
             .select('*')
             .eq('resto_id', orderData.restaurantId);
 
-        console.log('📦 Raw voucher query result:', { data, error });
+        console.log('?? Raw voucher query result:', { data, error });
 
         if (error) {
-            console.error('❌ Supabase error loading vouchers:', error);
+            console.error('? Supabase error loading vouchers:', error);
             throw error;
         }
 
         // Show all vouchers from the restaurant
         if (data && data.length > 0) {
-            console.log('📋 All vouchers from database:', data);
+            console.log('?? All vouchers from database:', data);
             availableVouchers = data.sort((a, b) => b.potongan - a.potongan);
-            console.log('✅ Available vouchers:', availableVouchers);
+            console.log('? Available vouchers:', availableVouchers);
         } else {
             availableVouchers = [];
-            console.log('⚠️ No vouchers found for this restaurant');
+            console.log('?? No vouchers found for this restaurant');
         }
 
         renderVoucherList();
     } catch (error) {
-        console.error('❌ Error loading vouchers:', error);
+        console.error('? Error loading vouchers:', error);
         availableVouchers = [];
         renderVoucherList();
     }
@@ -362,7 +362,7 @@ function renderVoucherList() {
     if (availableVouchers.length === 0) {
         container.innerHTML = `
             <div class="empty-vouchers">
-                <span class="empty-vouchers-icon">🎫</span>
+                <span class="empty-vouchers-icon">??</span>
                 <p>Tidak ada voucher yang tersedia saat ini</p>
             </div>
         `;
@@ -413,7 +413,7 @@ function createVoucherElement(voucher) {
             <div class="voucher-discount">Potongan ${formatCurrency(voucher.potongan)}</div>
             <div class="voucher-validity">
                 <span>Berlaku hingga ${expiredDate}</span>
-                <span style="margin-left: 0.5rem; color: ${voucher.stok > 5 ? 'var(--success)' : 'var(--warning)'};">• Stok: ${voucher.stok}</span>
+                <span style="margin-left: 0.5rem; color: ${voucher.stok > 5 ? 'var(--success)' : 'var(--warning)'};">� Stok: ${voucher.stok}</span>
             </div>
             ${!meetsMinimum ? `<div class="voucher-min-order">Min. pembelian ${formatCurrency(minimalOrder)}</div>` : ''}
         </div>
@@ -493,14 +493,14 @@ function createOrderItemElement(item, index) {
     const itemTotal = itemPrice * item.quantity;
 
     // Food emojis sebagai fallback (SAMA dengan catalog.js)
-    const foodEmojis = ['🍕', '🍔', '🍜', '🍱', '🍝', '🥘', '🍛', '🍲', '🥗', '🍖', '🍗', '🥙', '🌮', '🌯', '🥪'];
+    const foodEmojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
     const randomEmoji = foodEmojis[Math.floor(Math.random() * foodEmojis.length)];
     
     // Check for photo - PERSIS seperti di catalog.js
     const photoUrl = item.foto_menu || item.image_url || item.photo_url || item.foto || '';
     const hasImage = photoUrl && photoUrl.trim() !== '';
     
-    console.log(`🖼️ Rendering ${item.name}:`, {
+    console.log(`??? Rendering ${item.name}:`, {
         foto_menu: item.foto_menu,
         image_url: item.image_url,
         photoUrl: photoUrl,
@@ -515,8 +515,8 @@ function createOrderItemElement(item, index) {
                     alt="${item.name}"
                     class="item-image"
                     crossorigin="anonymous"
-                    onerror="console.error('❌ Image failed:', '${photoUrl}'); this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                    onload="console.log('✅ Image loaded:', '${item.name}');"
+                    onerror="console.error('? Image failed:', '${photoUrl}'); this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    onload="console.log('? Image loaded:', '${item.name}');"
                 >
                 <div class="item-image-fallback" style="display:none;">
                     <span>${randomEmoji}</span>
@@ -566,7 +566,7 @@ function editItemQuantity(index) {
     // Replace with quantity controls
     footerElement.innerHTML = `
         <div class="inline-quantity-controls">
-            <button class="qty-btn-inline qty-minus" onclick="updateQuantityInline(${index}, -1)">−</button>
+            <button class="qty-btn-inline qty-minus" onclick="updateQuantityInline(${index}, -1)">-</button>
             <span class="qty-display" id="qtyDisplay-${index}">${currentQuantity}</span>
             <button class="qty-btn-inline qty-plus" onclick="updateQuantityInline(${index}, 1)">+</button>
         </div>
@@ -676,7 +676,7 @@ function renderPickupInfo() {
     const container = document.getElementById('pickupDetails');
     
     // Restaurant card dengan style dashboard pembeli
-    const emojis = ['🍕', '🍔', '🍜', '🍱', '🍝', '🥘', '🍛', '🍲', '🥗', '🍖'];
+    const emojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
     const hasPhoto = orderData.restaurantInfo.photo && orderData.restaurantInfo.photo.trim() !== '';
     const rating = orderData.restaurantInfo.rating ? orderData.restaurantInfo.rating.toFixed(1) : '0.0';
@@ -690,7 +690,7 @@ function renderPickupInfo() {
                     : `<span>${randomEmoji}</span>`
                 }
                 <div class="pickup-card-badge">
-                    ⭐ ${rating}
+                    ? ${rating}
                 </div>
             </div>
             <div class="pickup-card-content">
@@ -767,7 +767,7 @@ function selectVoucher(voucher) {
         if (voucher.stok <= 0) {
             const statusEl = document.getElementById('voucherStatus');
             statusEl.className = 'voucher-status error';
-            statusEl.innerHTML = `✗ Voucher <strong>${voucher.nama_voucher}</strong> sudah habis!`;
+            statusEl.innerHTML = `? Voucher <strong>${voucher.nama_voucher}</strong> sudah habis!`;
             return;
         }
 
@@ -845,9 +845,9 @@ async function confirmCheckout() {
             // Update voucher stock if voucher was used
             let voucherUpdateResult = null;
             if (orderData.selectedVoucher) {
-                console.log('⏳ About to update voucher stock...');
+                console.log('? About to update voucher stock...');
                 voucherUpdateResult = await updateVoucherStock();
-                console.log('💾 Voucher update result:', voucherUpdateResult);
+                console.log('?? Voucher update result:', voucherUpdateResult);
             }
             
             // Save voucher result to localStorage for debugging
@@ -862,7 +862,7 @@ async function confirmCheckout() {
                     timestamp: new Date().toISOString(),
                     paymentMethod: 'cash'
                 };
-                console.log('📝 Saving to localStorage:', debugInfo);
+                console.log('?? Saving to localStorage:', debugInfo);
                 localStorage.setItem('platoo_last_voucher_result', JSON.stringify(debugInfo));
             }
 
@@ -904,14 +904,14 @@ async function confirmCheckout() {
                 restaurantInfo: orderData.restaurantInfo // Simpan restaurant info untuk cancel
             };
             
-            console.log('💳 Saving payment data to localStorage:', paymentData);
-            console.log('💰 Total price:', orderData.totalPrice);
+            console.log('?? Saving payment data to localStorage:', paymentData);
+            console.log('?? Total price:', orderData.totalPrice);
             
             localStorage.setItem('platoo_payment_pending', JSON.stringify(paymentData));
             
             // Verify saved data
             const savedData = localStorage.getItem('platoo_payment_pending');
-            console.log('✅ Verified saved data:', JSON.parse(savedData));
+            console.log('? Verified saved data:', JSON.parse(savedData));
 
             // JANGAN hapus cart dulu - baru hapus setelah payment confirmed
             // Ini agar user bisa kembali ke checkout jika cancel
@@ -919,10 +919,10 @@ async function confirmCheckout() {
             showLoadingOverlay(false);
 
             // Go to payment confirmation page
-            window.location.href = '/payment-confirmation.html';
+            window.location.href = 'payment-confirmation.html';
         }
     } catch (error) {
-        console.error('❌ Error confirming checkout:', error);
+        console.error('? Error confirming checkout:', error);
         console.error('Error details:', {
             message: error.message,
             stack: error.stack,
@@ -943,12 +943,12 @@ async function createOrder() {
         
         // Validate currentUser exists and get user ID
         if (!currentUser) {
-            console.error('❌ No user logged in!');
+            console.error('? No user logged in!');
             throw new Error('User tidak login');
         }
         
-        console.log('🔍 currentUser keys:', Object.keys(currentUser));
-        console.log('🔍 currentUser values:', currentUser);
+        console.log('?? currentUser keys:', Object.keys(currentUser));
+        console.log('?? currentUser values:', currentUser);
         
         // Try multiple possible ID field names
         const possibleUserId = currentUser.id || 
@@ -957,17 +957,17 @@ async function createOrder() {
                               currentUser.userId;
         
         if (!possibleUserId) {
-            console.error('❌ No user ID found in currentUser:', currentUser);
+            console.error('? No user ID found in currentUser:', currentUser);
             throw new Error('User ID tidak ditemukan');
         }
         
         // Pastikan user ID adalah integer
         const userId = parseInt(possibleUserId);
         if (isNaN(userId)) {
-            console.error('❌ Invalid user ID:', possibleUserId);
+            console.error('? Invalid user ID:', possibleUserId);
             throw new Error('User ID tidak valid');
         }
-        console.log('✅ User ID (converted to int):', userId, typeof userId);
+        console.log('? User ID (converted to int):', userId, typeof userId);
         
         // Get max order_id dari database untuk auto-increment manual
         const { data: maxOrderData } = await supabaseClient
@@ -1010,13 +1010,13 @@ async function createOrder() {
             throw error;
         }
         
-        console.log('✅ Orders created:', data);
+        console.log('? Orders created:', data);
         // Return order info
         const orderIds = orderInserts.map(o => o.order_id);
         const displayId = 'ORD-' + orderInserts[0].order_id;
         return { orderIds, displayId };
     } catch (error) {
-        console.error('❌ Error creating order:', error);
+        console.error('? Error creating order:', error);
         throw error;
     }
 }
@@ -1044,7 +1044,7 @@ async function updateFoodStock() {
 }
 
 async function updateVoucherStock() {
-    console.log('🎟️ Checking voucher data for cash payment:', orderData.selectedVoucher);
+    console.log('??? Checking voucher data for cash payment:', orderData.selectedVoucher);
     
     if (!orderData.selectedVoucher) {
         console.log('No voucher selected');
@@ -1063,7 +1063,7 @@ async function updateVoucherStock() {
             .single();
 
         if (fetchError) {
-            console.error('❌ Error fetching voucher:', fetchError);
+            console.error('? Error fetching voucher:', fetchError);
             throw fetchError;
         }
 
@@ -1080,33 +1080,33 @@ async function updateVoucherStock() {
                 .eq('voucher_id', voucherId)
                 .select();
 
-            console.log('🔍 DETAILED UPDATE RESPONSE:');
+            console.log('?? DETAILED UPDATE RESPONSE:');
             console.log('- updateData:', JSON.stringify(updateData, null, 2));
             console.log('- updateError:', JSON.stringify(updateError, null, 2));
             console.log('- Data length:', updateData?.length);
             console.log('- Updated row:', updateData?.[0]);
 
             if (updateError) {
-                console.error('❌ Error updating voucher:', updateError);
+                console.error('? Error updating voucher:', updateError);
                 return { success: false, error: updateError, oldStock: oldStok, newStock: newStok };
             }
 
             // Check if update actually modified a row
             if (!updateData || updateData.length === 0) {
-                console.error('⚠️ WARNING: Update executed but NO rows were modified!');
+                console.error('?? WARNING: Update executed but NO rows were modified!');
                 console.error('This usually means RLS policy is blocking the update.');
                 return { success: false, error: 'No rows updated - possible RLS issue', oldStock: oldStok, newStock: newStok };
             }
 
-            console.log(`✅ Voucher stock updated (cash payment): ${oldStok} → ${newStok}`);
+            console.log(`? Voucher stock updated (cash payment): ${oldStok} ? ${newStok}`);
             console.log('Updated data from database:', updateData);
             return { success: true, oldStock: oldStok, newStock: newStok, updatedRow: updateData[0] };
         } else {
-            console.warn('⚠️ Voucher not found in database');
+            console.warn('?? Voucher not found in database');
             return { success: false, error: 'Voucher not found' };
         }
     } catch (error) {
-        console.error('❌ Error updating voucher stock:', error);
+        console.error('? Error updating voucher stock:', error);
         return { success: false, error: error.message };
     }
 }
@@ -1157,7 +1157,7 @@ function closeModal(modalId) {
 }
 
 function goToDashboard() {
-    window.location.href = '/dashboard-pembeli.html';
+    window.location.href = 'dashboard-pembeli.html';
 }
 
 function showNotification(message, type = 'info') {
@@ -1166,7 +1166,7 @@ function showNotification(message, type = 'info') {
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <div class="notification-content">
-            <span class="notification-icon">${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span>
+            <span class="notification-icon">${type === 'success' ? '?' : type === 'error' ? '?' : '?'}</span>
             <span class="notification-message">${message}</span>
         </div>
     `;
@@ -1192,7 +1192,7 @@ function showNotification(message, type = 'info') {
 
 async function sendOrderEmail(orderId) {
     try {
-        console.log('📧 Sending order confirmation email...');
+        console.log('?? Sending order confirmation email...');
         
         // Initialize EmailJS if not already initialized
         if (typeof initEmailJS === 'function') {
@@ -1201,7 +1201,7 @@ async function sendOrderEmail(orderId) {
         
         // Check if user has email
         if (!currentUser.email) {
-            console.warn('⚠️ User has no email address, skipping email send');
+            console.warn('?? User has no email address, skipping email send');
             return;
         }
         
@@ -1224,9 +1224,9 @@ async function sendOrderEmail(orderId) {
             paymentMethod: orderData.selectedPaymentMethod
         };
         
-        console.log('📧 Full email data with items:', emailData);
+        console.log('?? Full email data with items:', emailData);
         
-        console.log('📧 Email data prepared:', {
+        console.log('?? Email data prepared:', {
             to: emailData.customerEmail,
             name: emailData.customerName,
             orderId: emailData.orderId,
@@ -1239,18 +1239,18 @@ async function sendOrderEmail(orderId) {
         if (typeof sendOrderConfirmationEmail === 'function') {
             const result = await sendOrderConfirmationEmail(emailData);
             if (result.success) {
-                console.log('✅ Email sent successfully!');
+                console.log('? Email sent successfully!');
                 return result;
             } else {
-                console.warn('⚠️ Email send failed:', result.error);
+                console.warn('?? Email send failed:', result.error);
                 return result;
             }
         } else {
-            console.warn('⚠️ Email service not loaded');
+            console.warn('?? Email service not loaded');
             return { success: false, error: 'Email service not loaded' };
         }
     } catch (error) {
-        console.error('❌ Error sending email:', error);
+        console.error('? Error sending email:', error);
         // Don't throw error - email is optional, order should still proceed
         return { success: false, error: error.message };
     }

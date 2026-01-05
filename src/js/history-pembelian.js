@@ -17,7 +17,7 @@ function checkAuth() {
     // Check if user exists and is pembeli
     if (!user || !user.username || user.role !== 'pembeli') {
         console.log('Auth check failed:', user);
-        window.location.href = '/login.html';
+        window.location.href = 'login.html';
         return;
     }
     

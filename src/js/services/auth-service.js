@@ -37,18 +37,25 @@ class AuthService extends ApiService {
                     id: user.id,
                     email: user.email,
                     role: user.role,
-                    full_name: user.full_name || user.nama || 'User'
+                    full_name: user.full_name || 'User'
                 };
                 localStorage.setItem('platoo_user', JSON.stringify(userData));
                 
-                return response.data;
+                return {
+                    success: true,
+                    user: user,
+                    session: session
+                };
             }
             
-            throw new Error('Login failed');
+            return { success: false, message: 'Login failed' };
             
         } catch (error) {
-            console.error('Login error:', error);
-            throw error;
+            console.error('❌ Login error:', error);
+            return { 
+                success: false, 
+                message: error.message || error.data?.message || 'Login gagal'
+            };
         }
     }
 

@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     if (!currentOrderId) {
         alert('Order ID not specified');
-        window.location.href = '/display-orders.html';
+        window.location.href = 'display-orders.html';
         return;
     }
 
@@ -64,7 +64,7 @@ async function loadOrder() {
         if (!order || !order.catalog || order.catalog.resto_id !== restaurantId) {
             container.innerHTML = '<div class="message error">Order not found or you do not have permission to view this order.</div>';
             setTimeout(() => {
-                window.location.href = '/display-orders.html';
+                window.location.href = 'display-orders.html';
             }, 2000);
             return;
         }
@@ -96,7 +96,7 @@ function displayOrderDetail(order) {
                         <div class="order-info">
                             <h3>Order #${order.order_id}</h3>
                             <div class="order-meta">
-                                <span>👤 Customer #${order.id_pembeli || 'N/A'}</span>
+                                <span>?? Customer #${order.id_pembeli || 'N/A'}</span>
                             </div>
                         </div>
                     </div>
@@ -123,7 +123,7 @@ function displayOrderDetail(order) {
                             </option>
                         </select>
                         <button class="btn-save-status" id="btn-save-${order.order_id}" onclick="saveStatusChange(${order.order_id})" style="display: none;">
-                            💾 Simpan Perubahan
+                            ?? Simpan Perubahan
                         </button>
                     </div>
                 </div>
@@ -156,7 +156,7 @@ async function saveStatusChange(orderId) {
     
     try {
         btnSave.disabled = true;
-        btnSave.textContent = '⏳ Menyimpan...';
+        btnSave.textContent = '? Menyimpan...';
 
         const { error } = await supabaseClient
             .from('orders')
@@ -171,7 +171,7 @@ async function saveStatusChange(orderId) {
         selectElement.dataset.original = newStatus;
         btnSave.style.display = 'none';
         btnSave.disabled = false;
-        btnSave.textContent = '💾 Simpan Perubahan';
+        btnSave.textContent = '?? Simpan Perubahan';
 
         // Reload order after short delay
         setTimeout(() => {
@@ -182,7 +182,7 @@ async function saveStatusChange(orderId) {
         console.error('Error updating status:', error);
         showMessage('Gagal mengubah status pesanan: ' + error.message, 'error');
         btnSave.disabled = false;
-        btnSave.textContent = '💾 Simpan Perubahan';
+        btnSave.textContent = '?? Simpan Perubahan';
     }
 }
 

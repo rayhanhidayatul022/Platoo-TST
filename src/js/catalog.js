@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!restaurantId || restaurantId === 'undefined' || restaurantId === 'null') {
         console.error('Invalid restaurant ID:', restaurantId);
         showNotification('ID restoran tidak valid', 'error');
-        setTimeout(() => window.location.href = '/dashboard-pembeli.html', 2000);
+        setTimeout(() => window.location.href = 'dashboard-pembeli.html', 2000);
         return;
     }
 
@@ -208,19 +208,19 @@ async function loadMenuItems() {
         loadingState.style.display = 'none';
 
         if (allMenuItems.length === 0) {
-            console.warn('⚠️ No menu items found for resto_id:', restoId);
+            console.warn('?? No menu items found for resto_id:', restoId);
             console.warn('Please check:');
             console.warn('1. Does resto_id', restoId, 'exist in catalog table?');
             console.warn('2. Is the column name exactly "resto_id" (case-sensitive)?');
             console.warn('3. Are there any RLS policies blocking the query?');
             emptyState.style.display = 'block';
         } else {
-            console.log('✅ Successfully loaded', allMenuItems.length, 'menu items');
+            console.log('? Successfully loaded', allMenuItems.length, 'menu items');
             console.log('Menu items:', allMenuItems);
             displayMenuItems(allMenuItems);
         }
     } catch (error) {
-        console.error('❌ Error loading menu:', error);
+        console.error('? Error loading menu:', error);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
         loadingState.style.display = 'none';
@@ -281,7 +281,7 @@ function createMenuCard(item) {
     card.className = cardClass;
 
     // Food/drink emojis
-    const emojis = ['🍕', '🍔', '🍜', '🍱', '🍝', '🥘', '🍛', '🍲', '🥗', '🍖', '🍗', '🥙', '🌮', '🌯', '🥪', '🍰', '🧁', '🍩', '☕', '🧃'];
+    const emojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '?', '??'];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
     // Check for photo - try multiple possible field names
@@ -301,11 +301,11 @@ function createMenuCard(item) {
                        alt="${item.nama_makanan || 'Menu'}" 
                        crossorigin="anonymous"
                        onerror="handleImageError(this, '${randomEmoji}')"
-                       onload="console.log('✅ Image loaded:', '${item.nama_makanan}');">
+                       onload="console.log('? Image loaded:', '${item.nama_makanan}');">
                    <span class="emoji-fallback" style="font-size: 4rem; width: 100%; height: 100%; display: none; align-items: center; justify-content: center;">${randomEmoji}</span>`
                 : `<span style="font-size: 4rem;">${randomEmoji}</span>`
             }
-            ${discount > 0 ? `<div class="menu-badge">🔥 -${discount}%</div>` : ''}
+            ${discount > 0 ? `<div class="menu-badge">?? -${discount}%</div>` : ''}
             ${!isAvailable ? '<div class="sold-out-overlay">HABIS</div>' : ''}
         </div>
         <div class="menu-card-content">
@@ -482,7 +482,7 @@ function addToCart(itemId) {
     console.log('Existing items in cart:', existingItemIds);
     
     if (existingItemIds.length > 0 && !existingItemIds.includes(itemId)) {
-        showNotification('⚠️ Anda hanya bisa memesan 1 jenis produk', 'error');
+        showNotification('?? Anda hanya bisa memesan 1 jenis produk', 'error');
         console.log('BLOCKED: Cannot add item', itemId, ', cart already has:', existingItemIds[0]);
         return;
     }
@@ -502,7 +502,7 @@ function addToCart(itemId) {
 
     // Add to cart
     cart[itemId] = 1;
-    console.log('✅ Item added to cart:', itemId);
+    console.log('? Item added to cart:', itemId);
     console.log('Cart after add:', JSON.stringify(cart));
     
     // Update UI - refresh card ini dan disable card lainnya
@@ -543,7 +543,7 @@ function increaseQuantity(itemId) {
     }
 
     cart[itemId] = currentQty + 1;
-    console.log('✅ Quantity increased to:', cart[itemId]);
+    console.log('? Quantity increased to:', cart[itemId]);
     console.log('Cart after increase:', JSON.stringify(cart));
     
     // Update UI tanpa re-render semua
@@ -572,7 +572,7 @@ function decreaseQuantity(itemId) {
     
     if (currentQty <= 1) {
         delete cart[itemId];
-        console.log('✅ Item removed from cart');
+        console.log('? Item removed from cart');
         console.log('Cart after removal:', JSON.stringify(cart));
         
         // Update UI tanpa re-render semua
@@ -589,7 +589,7 @@ function decreaseQuantity(itemId) {
         }
     } else {
         cart[itemId] = currentQty - 1;
-        console.log('✅ Quantity decreased to:', cart[itemId]);
+        console.log('? Quantity decreased to:', cart[itemId]);
         console.log('Cart after decrease:', JSON.stringify(cart));
         
         // Update UI tanpa re-render semua
@@ -689,13 +689,13 @@ function proceedToCheckout() {
     // Redirect to checkout page
     showNotification('Mengalihkan ke halaman pembayaran...', 'success');
     setTimeout(() => {
-        window.location.href = '/checkout.html';
+        window.location.href = 'checkout.html';
     }, 1000);
 }
 
 // Handle image loading error
 function handleImageError(img, emoji) {
-    console.error('❌ Failed to load image:', img.src);
+    console.error('? Failed to load image:', img.src);
     console.log('Showing emoji fallback:', emoji);
     
     // Hide image

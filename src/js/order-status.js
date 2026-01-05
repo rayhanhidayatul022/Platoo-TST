@@ -80,7 +80,7 @@ function checkEmailResult() {
 function goToRestaurant() {
     if (!orderData || !orderData.restaurant) {
         console.error('No restaurant data available');
-        window.location.href = '/dashboard-pembeli.html';
+        window.location.href = 'dashboard-pembeli.html';
         return;
     }
 

@@ -1,4 +1,4 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -26,14 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error('Error parsing payment data:', e);
             alert('Data pembayaran tidak valid');
-            window.location.href = '/catalog.html';
+            window.location.href = 'catalog.html';
             return;
         }
     }
 
     if (!paymentData.orderId) {
         alert('Data pembayaran tidak ditemukan');
-        window.location.href = '/catalog.html';
+        window.location.href = 'catalog.html';
         return;
     }
 
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!paymentData.amount || paymentData.amount === 0) {
         console.error('Payment amount is 0 or undefined:', paymentData);
         alert('Total pembayaran tidak valid');
-        window.location.href = '/catalog.html';
+        window.location.href = 'catalog.html';
         return;
     }
 
@@ -134,7 +134,7 @@ function startCountdown() {
             clearInterval(countdownTimer);
             alert('Waktu pembayaran habis. Silakan buat pesanan baru.');
             localStorage.removeItem('platoo_payment_pending');
-            window.location.href = '/catalog.html';
+            window.location.href = 'catalog.html';
         }
     }, 1000);
 }
@@ -162,7 +162,7 @@ async function confirmPayment() {
     try {
         await updateFoodStockAfterPayment();
         voucherUpdateResult = await updateVoucherStockAfterPayment();
-        console.log('💾 Voucher update result (digital payment):', voucherUpdateResult);
+        console.log('?? Voucher update result (digital payment):', voucherUpdateResult);
     } catch (error) {
         console.error('Error updating stock:', error);
         // Tetap lanjut redirect meskipun ada error (bisa dihandle lebih baik di production)
@@ -242,7 +242,7 @@ async function updateFoodStockAfterPayment() {
     }
 
     try {
-        console.log('🔄 Updating food stock after payment confirmation...');
+        console.log('?? Updating food stock after payment confirmation...');
         for (const item of paymentData.items) {
             // Get current stock
             const { data: food } = await supabase
@@ -258,26 +258,26 @@ async function updateFoodStockAfterPayment() {
                     .update({ stok: newStok })
                     .eq('catalog_id', item.id);
                 
-                console.log(`✅ Updated stock for item ${item.id}: ${food.stok} → ${newStok}`);
+                console.log(`? Updated stock for item ${item.id}: ${food.stok} ? ${newStok}`);
             }
         }
-        console.log('✅ All food stocks updated successfully');
+        console.log('? All food stocks updated successfully');
     } catch (error) {
-        console.error('❌ Error updating food stock:', error);
+        console.error('? Error updating food stock:', error);
         throw error;
     }
 }
 
 async function updateVoucherStockAfterPayment() {
-    console.log('🎟️ Checking voucher data:', paymentData.voucher);
+    console.log('??? Checking voucher data:', paymentData.voucher);
     
     if (!paymentData.voucher) {
-        console.log('ℹ️ No voucher to update');
+        console.log('?? No voucher to update');
         return;
     }
 
     try {
-        console.log('🔄 Updating voucher stock after payment confirmation...');
+        console.log('?? Updating voucher stock after payment confirmation...');
         const voucherId = paymentData.voucher.voucher_id;
         console.log('Voucher ID to update:', voucherId);
 
@@ -289,7 +289,7 @@ async function updateVoucherStockAfterPayment() {
             .single();
 
         if (fetchError) {
-            console.error('❌ Error fetching voucher:', fetchError);
+            console.error('? Error fetching voucher:', fetchError);
             throw fetchError;
         }
 
@@ -304,28 +304,28 @@ async function updateVoucherStockAfterPayment() {
                 .eq('voucher_id', voucherId)
                 .select();
 
-            console.log('🔍 UPDATE RESPONSE (Digital Payment):');
+            console.log('?? UPDATE RESPONSE (Digital Payment):');
             console.log('- updateData:', JSON.stringify(updateData, null, 2));
             console.log('- updateError:', JSON.stringify(updateError, null, 2));
 
             if (updateError) {
-                console.error('❌ Error updating voucher:', updateError);
+                console.error('? Error updating voucher:', updateError);
                 return { success: false, error: updateError, oldStock: oldStok, newStock: newStok };
             }
 
             if (!updateData || updateData.length === 0) {
-                console.error('⚠️ WARNING: No rows updated - possible RLS issue');
+                console.error('?? WARNING: No rows updated - possible RLS issue');
                 return { success: false, error: 'No rows updated - possible RLS issue', oldStock: oldStok, newStock: newStok };
             }
 
-            console.log(`✅ Voucher stock updated: ${oldStok} → ${newStok}`);
+            console.log(`? Voucher stock updated: ${oldStok} ? ${newStok}`);
             return { success: true, oldStock: oldStok, newStock: newStok, updatedRow: updateData[0] };
         } else {
-            console.warn('⚠️ Voucher not found in database');
+            console.warn('?? Voucher not found in database');
             return { success: false, error: 'Voucher not found' };
         }
     } catch (error) {
-        console.error('❌ Error updating voucher stock:', error);
+        console.error('? Error updating voucher stock:', error);
         return { success: false, error: error.message };
     }
 }
@@ -339,9 +339,9 @@ async function deleteOrders(orderIds) {
             .in('order_id', orderIds);
         
         if (error) throw error;
-        console.log('✅ Orders deleted:', orderIds);
+        console.log('? Orders deleted:', orderIds);
     } catch (error) {
-        console.error('❌ Error deleting orders:', error);
+        console.error('? Error deleting orders:', error);
         throw error;
     }
 }
@@ -403,13 +403,13 @@ function confirmCancel() {
     // Redirect ke halaman CHECKOUT (bukan catalog)
     // Agar user bisa ganti metode pembayaran
     console.log('Redirecting back to checkout page');
-    window.location.href = '/checkout.html';
+    window.location.href = 'checkout.html';
 }
 
 // Email Functions
 async function sendPaymentConfirmationEmail() {
     try {
-        console.log('📧 Sending payment confirmation email...');
+        console.log('?? Sending payment confirmation email...');
         
         // Initialize EmailJS
         if (typeof initEmailJS === 'function') {
@@ -431,13 +431,13 @@ async function sendPaymentConfirmationEmail() {
             if (!pembeliError && pembeliData) {
                 userData.email = pembeliData.email;
                 userData.nama = pembeliData.nama;
-                console.log('✅ Email fetched from database:', userData.email);
+                console.log('? Email fetched from database:', userData.email);
             }
         }
         
         // Check if user has email
         if (!userData.email) {
-            console.warn('⚠️ User has no email address, skipping email send');
+            console.warn('?? User has no email address, skipping email send');
             return;
         }
         
@@ -460,24 +460,24 @@ async function sendPaymentConfirmationEmail() {
             paymentMethod: paymentData.method
         };
         
-        console.log('📧 Full email data:', emailData);
+        console.log('?? Full email data:', emailData);
         
         // Send email
         if (typeof sendOrderConfirmationEmail === 'function') {
             const result = await sendOrderConfirmationEmail(emailData);
             if (result.success) {
-                console.log('✅ Email sent successfully!');
+                console.log('? Email sent successfully!');
                 return result;
             } else {
-                console.warn('⚠️ Email send failed:', result.error);
+                console.warn('?? Email send failed:', result.error);
                 return result;
             }
         } else {
-            console.warn('⚠️ Email service not loaded');
+            console.warn('?? Email service not loaded');
             return { success: false, error: 'Email service not loaded' };
         }
     } catch (error) {
-        console.error('❌ Error sending email:', error);
+        console.error('? Error sending email:', error);
         // Don't throw - email is optional
         return { success: false, error: error.message };
     }

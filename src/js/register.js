@@ -1,11 +1,4 @@
-﻿// Register using Voucher API + Supabase fallback
-const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const USE_API = typeof authService !== 'undefined'; // Check if API services loaded
-
+// Register using Voucher API only
 let selectedRole = null;
 
 // Role selection
@@ -166,62 +159,20 @@ async function registerPembeli() {
     }
 
     try {
-        // Try Voucher API first if available
-        if (USE_API) {
-            const result = await authService.register(email, password, nama);
-            
-            if (result.success) {
-                showMessage('Registrasi berhasil! Silakan login.', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
-            }
-        }
-    } catch (apiError) {
-        console.log('API register failed, trying Supabase fallback:', apiError);
-    }
-    
-    // Fallback to Supabase
-    // Cek apakah username atau email sudah ada
-    const { data: existingUser } = await supabaseClient
-        .from('pembeli')
-        .select('username, email')
-        .or(`username.eq.${username},email.eq.${email}`)
-        .single();
-    
-    if (existingUser) {
-        if (existingUser.username === username) {
-            showMessage('Username sudah digunakan!', 'error');
+        const result = await authService.register(email, password, nama);
+        
+        if (result.success) {
+            showMessage('Registrasi berhasil! Silakan login.', 'success');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
         } else {
-            showMessage('Email sudah terdaftar!', 'error');
+            showMessage('Registrasi gagal. Silakan coba lagi.', 'error');
         }
-        return;
+    } catch (error) {
+        console.error('Register error:', error);
+        showMessage(error.message || 'Terjadi kesalahan saat registrasi.', 'error');
     }
-    
-    // Insert data pembeli
-    const { data, error } = await supabaseClient
-        .from('pembeli')
-        .insert([
-            {
-                nama: nama,
-                nomor_telepon: telepon,
-                email: email,
-                username: username,
-                password: password // CATATAN: Di production, gunakan hashing!
-            }
-        ])
-        .select();
-    
-    if (error) {
-        throw error;
-    }
-    
-    showMessage('Registrasi berhasil! Silakan login.', 'success');
-    
-    setTimeout(() => {
-        window.location.href = '/login.html';
-    }, 2000);
 }
 
 async function registerPenjual() {
@@ -268,92 +219,20 @@ async function registerPenjual() {
     }
 
     try {
-        // Try Voucher API first if available (register as ADMIN)
-        if (USE_API) {
-            const result = await authService.register(email, password, namaRestoran, 'ADMIN');
-            
-            if (result.success) {
-                showMessage('Registrasi berhasil! Silakan login.', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
-            }
-        }
-    } catch (apiError) {
-        console.log('API register failed, trying Supabase fallback:', apiError);
-    }
-
-    // Fallback to Supabase
-    // Cek apakah nama restoran (username) atau email sudah ada
-    const { data: existingRestoran } = await supabaseClient
-        .from('restoran')
-        .select('nama_restoran, email')
-        .or(`nama_restoran.eq.${namaRestoran},email.eq.${email}`)
-        .single();
-
-    if (existingRestoran) {
-        if (existingRestoran.nama_restoran === namaRestoran) {
-            showMessage('Nama restoran sudah digunakan!', 'error');
+        const result = await authService.register(email, password, namaRestoran, 'ADMIN');
+        
+        if (result.success) {
+            showMessage('Registrasi berhasil! Silakan login.', 'success');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
         } else {
-            showMessage('Email sudah terdaftar!', 'error');
+            showMessage('Registrasi gagal. Silakan coba lagi.', 'error');
         }
-        return;
+    } catch (error) {
+        console.error('Register error:', error);
+        showMessage(error.message || 'Terjadi kesalahan saat registrasi.', 'error');
     }
-
-    let fotoUrl = null;
-
-    // Upload foto ke Supabase Storage jika ada
-    if (fotoFile) {
-        const fileExt = fotoFile.name.split('.').pop();
-        const fileName = `${namaRestoran.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`;
-        const filePath = `restoran/${fileName}`;
-
-        const { error: uploadError } = await supabaseClient.storage
-            .from('resto-photos')
-            .upload(filePath, fotoFile, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (uploadError) {
-            console.error('Upload error:', uploadError);
-            showMessage('Gagal mengupload foto: ' + uploadError.message, 'error');
-            return;
-        }
-
-        // Dapatkan public URL
-        const { data: urlData } = supabaseClient.storage
-            .from('resto-photos')
-            .getPublicUrl(filePath);
-
-        fotoUrl = urlData.publicUrl;
-    }
-
-    // Insert data penjual
-    const { data, error } = await supabaseClient
-        .from('restoran')
-        .insert([
-            {
-                nama_restoran: namaRestoran,
-                email: email,
-                nomor_telepon: telepon,
-                alamat: alamat,
-                password: password, // CATATAN: Di production, gunakan hashing!
-                foto_url: fotoUrl
-            }
-        ])
-        .select();
-
-    if (error) {
-        throw error;
-    }
-
-    showMessage('Registrasi berhasil! Silakan login.', 'success');
-
-    setTimeout(() => {
-        window.location.href = '/login.html';
-    }, 2000);
 }
 
 function validatePhone(phone) {
