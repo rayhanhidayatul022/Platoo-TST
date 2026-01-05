@@ -78,6 +78,11 @@ const Utils = {
      * Get current user from localStorage
      */
     getCurrentUser: function() {
+        // Use authService if available, otherwise fallback to direct localStorage access
+        if (typeof authService !== 'undefined') {
+            return authService.getCurrentUser();
+        }
+        
         try {
             const userData = localStorage.getItem('platoo_user');
             if (!userData) return null;
@@ -92,6 +97,11 @@ const Utils = {
      * Check if user is authenticated
      */
     isAuthenticated: function() {
+        // Use authService if available
+        if (typeof authService !== 'undefined') {
+            return authService.isAuthenticated();
+        }
+        
         const user = this.getCurrentUser();
         return user !== null;
     },
@@ -99,7 +109,7 @@ const Utils = {
     /**
      * Redirect to login if not authenticated
      */
-    requireAuth: function(redirectUrl = '/login.html') {
+    requireAuth: function(redirectUrl = 'login.html') {
         if (!this.isAuthenticated()) {
             this.showAlert('Silakan login terlebih dahulu', 'warning')
                 .then(() => {

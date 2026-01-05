@@ -1,7 +1,10 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+﻿// Register using Voucher API + Supabase fallback
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const USE_API = typeof authService !== 'undefined'; // Check if API services loaded
 
 let selectedRole = null;
 
@@ -161,7 +164,25 @@ async function registerPembeli() {
         showMessage('Format nomor telepon tidak valid!', 'error');
         return;
     }
+
+    try {
+        // Try Voucher API first if available
+        if (USE_API) {
+            const result = await authService.register(email, password, nama);
+            
+            if (result.success) {
+                showMessage('Registrasi berhasil! Silakan login.', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+        }
+    } catch (apiError) {
+        console.log('API register failed, trying Supabase fallback:', apiError);
+    }
     
+    // Fallback to Supabase
     // Cek apakah username atau email sudah ada
     const { data: existingUser } = await supabaseClient
         .from('pembeli')
@@ -246,6 +267,24 @@ async function registerPenjual() {
         return;
     }
 
+    try {
+        // Try Voucher API first if available (register as ADMIN)
+        if (USE_API) {
+            const result = await authService.register(email, password, namaRestoran, 'ADMIN');
+            
+            if (result.success) {
+                showMessage('Registrasi berhasil! Silakan login.', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+        }
+    } catch (apiError) {
+        console.log('API register failed, trying Supabase fallback:', apiError);
+    }
+
+    // Fallback to Supabase
     // Cek apakah nama restoran (username) atau email sudah ada
     const { data: existingRestoran } = await supabaseClient
         .from('restoran')

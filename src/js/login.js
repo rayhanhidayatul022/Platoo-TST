@@ -1,9 +1,11 @@
-﻿const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+﻿// Login using Voucher API + Supabase fallback
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentRole = 'pembeli';
+const USE_API = typeof authService !== 'undefined'; // Check if API services loaded
 
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -68,6 +70,39 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 });
 
 async function loginPembeli(username, password) {
+    try {
+        // Try Voucher API first if available
+        if (USE_API) {
+            const result = await authService.login(username, password);
+            
+            if (result.success && result.user) {
+                // Check if user is pembeli (USER role)
+                if (result.user.role !== 'USER') {
+                    showMessage('Akun ini bukan pembeli! Silakan login sebagai penjual.', 'error');
+                    await authService.logout();
+                    return;
+                }
+
+                // Save user data to localStorage (compatible with old format)
+                localStorage.setItem('platoo_user', JSON.stringify({
+                    id: result.user.id,
+                    nama: result.user.full_name || result.user.email,
+                    username: username,
+                    role: 'pembeli'
+                }));
+
+                showMessage('Login berhasil! Mengalihkan...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/dashboard-pembeli.html';
+                }, 1500);
+                return;
+            }
+        }
+    } catch (apiError) {
+        console.log('API login failed, trying Supabase fallback:', apiError);
+    }
+
+    // Fallback to Supabase
     // Cek apakah username ada
     const { data: checkUser } = await supabaseClient
         .from('pembeli')
@@ -110,6 +145,39 @@ async function loginPembeli(username, password) {
 }
 
 async function loginPenjual(namaRestoran, password) {
+    try {
+        // Try Voucher API first if available
+        if (USE_API) {
+            const result = await authService.login(namaRestoran, password);
+            
+            if (result.success && result.user) {
+                // Check if user is penjual (ADMIN role)
+                if (result.user.role !== 'ADMIN') {
+                    showMessage('Akun ini bukan penjual! Silakan login sebagai pembeli.', 'error');
+                    await authService.logout();
+                    return;
+                }
+
+                // Save user data to localStorage (compatible with old format)
+                localStorage.setItem('platoo_user', JSON.stringify({
+                    id: result.user.id,
+                    nama_restoran: result.user.full_name || result.user.email,
+                    alamat: '',
+                    role: 'penjual'
+                }));
+
+                showMessage('Login berhasil! Mengalihkan...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/dashboard-penjual.html';
+                }, 1500);
+                return;
+            }
+        }
+    } catch (apiError) {
+        console.log('API login failed, trying Supabase fallback:', apiError);
+    }
+
+    // Fallback to Supabase
     // Cek apakah restoran ada
     const { data: checkRestoran } = await supabaseClient
         .from('restoran')
