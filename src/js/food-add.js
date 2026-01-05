@@ -1,157 +1,185 @@
-const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
+/**
+ * Food Add Form
+ * Integrated with Katalog Microservice API
+ */
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-function showModal(title, message, type = 'success', showCancel = false) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('customModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalMessage = document.getElementById('modalMessage');
-        const modalIcon = document.getElementById('modalIcon');
-        const modalConfirm = document.getElementById('modalConfirm');
-        const modalCancel = document.getElementById('modalCancel');
-        
-        modalTitle.textContent = title;
-        modalMessage.textContent = message;
-        
-        modalIcon.className = 'modal-icon ' + type;
-        
-        if (showCancel) {
-            modalCancel.style.display = 'block';
-        } else {
-            modalCancel.style.display = 'none';
-        }
-        
-        modal.classList.add('show');
-        
-        modalConfirm.onclick = () => {
-            modal.classList.remove('show');
-            resolve(true);
-        };
-        
-        modalCancel.onclick = () => {
-            modal.classList.remove('show');
-            resolve(false);
-        };
-        
-        modal.onclick = (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('show');
-                resolve(false);
-            }
-        };
-    });
-}
-
-function showAlert(message, type = 'success') {
-    const titles = {
-        success: 'Berhasil!',
-        error: 'Gagal!',
-        warning: 'Peringatan!',
-        question: 'Konfirmasi'
-    };
-    return showModal(titles[type] || 'Informasi', message, type, false);
-}
-
-function showConfirm(message, title = 'Konfirmasi') {
-    return showModal(title, message, 'question', true);
-}
-
-async function getCurrentRestoId() {
-    const userData = JSON.parse(localStorage.getItem('platoo_user'));
-    const restoId = userData.id;
-    
-    if (!restoId) {
-        await showAlert('Sesi habis atau belum login. Silakan login kembali.', 'warning');
-        window.location.href = 'login.html';
-        return null;
-    }
-    
-    return restoId;
-}
-
-async function uploadImage(file, restoId) {
-    try {
-        const fileName = `${restoId}_${Date.now()}_${file.name}`;
-        
-        const { data, error } = await supabaseClient.storage
-            .from('resto-photos/katalog')
-            .upload(fileName, file);
-        
-        if (error) throw error;
-        
-        const { data: urlData } = supabaseClient.storage
-            .from('resto-photos/katalog')
-            .getPublicUrl(fileName);
-        
-        return urlData.publicUrl;
-        
-    } catch (error) {
-        console.error('Error uploading image:', error);
-        throw error;
-    }
-}
+let katalogService;
 
 async function handleSubmit(e) {
-    e.preventDefault();
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    console.log('🚀 Form submitted!');
+    
+    const submitBtn = document.querySelector('.btn-submit');
+    const originalHTML = submitBtn ? submitBtn.innerHTML : '';
     
     try {
-        var fotoUrl = null;
-        const namaMakanan = document.getElementById('nama_makanan').value;
-        const stok = parseInt(document.getElementById('stok').value);
-        const harga = parseInt(document.getElementById('harga').value);
-        const fotoFile = document.getElementById('foto').files[0];
-        
-        if (!namaMakanan.trim() || isNaN(stok) || stok < 0 || isNaN(harga) || harga <= 0) {
-            await showAlert('Mohon lengkapi semua field yang wajib!', 'warning');
-            return;
+        // Check if katalogService is initialized
+        if (!katalogService) {
+            console.error('❌ KatalogService not initialized!');
+            await Utils.showAlert('Service belum siap, silakan refresh halaman', 'error');
+            return false;
         }
         
-        const restoId = await getCurrentRestoId();
+        // Check authentication
+        console.log('🔒 Checking authentication...');
+        if (!Utils.requireAuth()) {
+            console.log('❌ Not authenticated');
+            return false;
+        }
+        console.log('✅ User authenticated');
+
+        if (!submitBtn) {
+            console.error('❌ Submit button not found!');
+            await Utils.showAlert('Error: Submit button tidak ditemukan', 'error');
+            return false;
+        }
         
-        const submitBtn = document.querySelector('.btn-submit');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Menyimpan...';
+        Utils.showLoading(true);
+        submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="animation: spin 0.8s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Menyimpan...';
         submitBtn.disabled = true;
+
+        // Collect form data
+        console.log('📝 Collecting form data...');
         
-        if(fotoFile) {
-            console.log('Uploading image...');
-            fotoUrl = await uploadImage(fotoFile, restoId);
+        // Use FormData for file upload
+        const formData = new FormData();
+        formData.append('name', document.getElementById('nama_makanan').value.trim());
+        formData.append('price', parseInt(document.getElementById('harga').value));
+        formData.append('stock', parseInt(document.getElementById('stok').value));
+        formData.append('resto_id', 1); // Fixed resto_id = 1
+        
+        const description = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+        if (description) {
+            formData.append('description', description);
         }
         
-        console.log('Inserting to database...');
-        const { data, error } = await supabase
-            .from('catalog')
-            .insert([
-                {
-                    resto_id: restoId,
-                    nama_makanan: namaMakanan,
-                    stok: stok,
-                    harga: harga,
-                    foto: fotoUrl || 'https://res.cloudinary.com/dk0z4ums3/image/upload/v1733967095/attached_image/7-makanan-korea-yang-menyehatkan-cocok-di-lidah-lokal.jpg'
-                }
-            ]);
+        // Handle file upload
+        const imageInput = document.getElementById('image');
+        if (imageInput && imageInput.files && imageInput.files[0]) {
+            formData.append('image', imageInput.files[0]);
+            console.log('📷 Image file attached:', imageInput.files[0].name);
+        }
         
-        if (error) throw error;
+        formData.append('is_active', true);
         
-        await showAlert('Makanan berhasil ditambahkan!', 'success');
+        console.log('📦 Form data prepared for upload');
+        console.log('📦 Will POST to:', `${katalogService.baseUrl}${API_CONFIG.endpoints.katalog.create}`);
         
-        window.location.href = 'food-catalog.html';
+        // Log FormData contents
+        for (let pair of formData.entries()) {
+            console.log('📦', pair[0] + ':', pair[1]);
+        }
+
+        // Validation
+        const nama = document.getElementById('nama_makanan').value.trim();
+        const harga = parseInt(document.getElementById('harga').value);
+        const stok = parseInt(document.getElementById('stok').value);
         
-    } catch (error) {
-        console.error('Error submitting form:', error);
-        await showAlert('Gagal menambahkan makanan. Silakan coba lagi.', 'error');
-        
-        const submitBtn = document.querySelector('.btn-submit');
-        submitBtn.textContent = 'Tambah';
+        if (!nama) {
+            console.log('⚠️ Name missing');
+            await Utils.showAlert('Nama makanan wajib diisi!', 'warning');
+            Utils.showLoading(false);
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return false;
+        }
+
+        if (harga <= 0 || isNaN(harga)) {
+            console.log('⚠️ Invalid price');
+            await Utils.showAlert('Harga harus lebih dari 0!', 'warning');
+            Utils.showLoading(false);
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return false;
+        }
+
+        if (stok < 0 || isNaN(stok)) {
+            console.log('⚠️ Invalid stock');
+            await Utils.showAlert('Stok tidak boleh negatif!', 'warning');
+            Utils.showLoading(false);
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+            return false;
+        const namaMakanan = document.getElementById('nama_makanan').value;
+        }
+
+        // Send data to API
+        console.log('📡 Sending data to API...');
+        const response = await katalogService.createFood(formData);
+        console.log('✅ API response:', response);
+
+        Utils.showLoading(false);
+        submitBtn.innerHTML = originalHTML;
         submitBtn.disabled = false;
+
+        // Show success message
+        await Utils.showAlert('Makanan berhasil ditambahkan!', 'success');
+
+        // Redirect to catalog
+        window.location.href = 'food-catalog.html';
+
+    } catch (error) {
+        console.error('❌ Error submitting form:', error);
+        Utils.showLoading(false);
+        
+        if (submitBtn) {
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.disabled = false;
+        }
+
+        const errorMsg = Utils.handleApiError(error);
+        await Utils.showAlert(`Gagal menambahkan makanan: ${errorMsg}`, 'error');
+        
+        return false;
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Food form page loaded');
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('✨ Food Add page loaded');
     
+    // Initialize service
+    try {
+        console.log('🔧 Initializing KatalogService...');
+        katalogService = new KatalogService();
+        console.log('✅ KatalogService initialized:', katalogService);
+        console.log('✅ Base URL:', katalogService.baseUrl);
+    } catch (error) {
+        console.error('❌ Error initializing KatalogService:', error);
+        await Utils.showAlert('Gagal menginisialisasi service katalog', 'error');
+        return;
+    }
+    
+    // Setup form submission
     const form = document.getElementById('foodForm');
-    form.addEventListener('submit', handleSubmit);
+    if (form) {
+        form.addEventListener('submit', handleSubmit);
+        console.log('✅ Form submit handler attached');
+    } else {
+        console.error('❌ Food form not found!');
+    }
+    
+    // Setup image preview
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('imagePreview');
+                    const previewImg = document.getElementById('previewImg');
+                    if (preview && previewImg) {
+                        previewImg.src = event.target.result;
+                        preview.style.display = 'block';
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        console.log('✅ Image preview handler attached');
+    }
 });
