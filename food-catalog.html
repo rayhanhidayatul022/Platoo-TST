@@ -217,6 +217,12 @@
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
         }
 
+        .status-badge.status-nonaktif {
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            color: #4b5563;
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
+        }
+
         .status-dot {
             width: 7px;
             height: 7px;
@@ -637,14 +643,6 @@
 
     <main>
         <div class="container">
-            <div class="top-actions">
-                <a href="food-add.html" class="btn-add">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Makanan Baru
-                </a>
-            </div>
 
             <div id="foodGrid" class="food-grid">
                 <!-- Cards will be loaded here -->

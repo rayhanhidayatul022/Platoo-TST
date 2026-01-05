@@ -5,6 +5,44 @@
 
 let katalogService;
 
+// Supabase configuration for image upload
+const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
+
+/**
+ * Upload image to Supabase Storage
+ * @param {File} file - Image file to upload
+ * @returns {Promise<string>} Public URL of uploaded image
+ */
+async function uploadImageToSupabase(file) {
+    try {
+        const fileName = `food_${Date.now()}_${file.name}`;
+        
+        // Upload to Supabase Storage
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/resto-photos/katalog/${fileName}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            throw new Error('Upload failed');
+        }
+        
+        // Get public URL
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/resto-photos/katalog/${fileName}`;
+        return publicUrl;
+    } catch (error) {
+        console.error('Error uploading to Supabase:', error);
+        throw error;
+    }
+}
+
 async function handleSubmit(e) {
     if (e) {
         e.preventDefault();
@@ -45,34 +83,35 @@ async function handleSubmit(e) {
         // Collect form data
         console.log('📝 Collecting form data...');
         
-        // Use FormData for file upload
-        const formData = new FormData();
-        formData.append('name', document.getElementById('nama_makanan').value.trim());
-        formData.append('price', parseInt(document.getElementById('harga').value));
-        formData.append('stock', parseInt(document.getElementById('stok').value));
-        formData.append('resto_id', 1); // Fixed resto_id = 1
-        
-        const description = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
-        if (description) {
-            formData.append('description', description);
-        }
-        
-        // Handle file upload
+        // Handle image upload to Supabase first if file selected
+        let imageUrl = '';
         const imageInput = document.getElementById('image');
         if (imageInput && imageInput.files && imageInput.files[0]) {
-            formData.append('image', imageInput.files[0]);
-            console.log('📷 Image file attached:', imageInput.files[0].name);
+            try {
+                console.log('📤 Uploading image to Supabase...');
+                imageUrl = await uploadImageToSupabase(imageInput.files[0]);
+                console.log('✅ Image uploaded:', imageUrl);
+            } catch (uploadError) {
+                console.error('❌ Image upload failed:', uploadError);
+                await Utils.showAlert('Gagal mengupload gambar. Lanjutkan tanpa gambar?', 'warning');
+                // Continue without image
+            }
         }
         
-        formData.append('is_active', true);
+        // Prepare JSON data for API
+        const formData = {
+            name: document.getElementById('nama_makanan').value.trim(),
+            price: parseInt(document.getElementById('harga').value),
+            stock: parseInt(document.getElementById('stok').value),
+            resto_id: 1, // Fixed resto_id = 1
+            description: document.getElementById('description') ? document.getElementById('description').value.trim() : '',
+            image_url: imageUrl || '',
+            is_active: true
+        };
         
-        console.log('📦 Form data prepared for upload');
+        console.log('📦 Form data prepared');
         console.log('📦 Will POST to:', `${katalogService.baseUrl}${API_CONFIG.endpoints.katalog.create}`);
-        
-        // Log FormData contents
-        for (let pair of formData.entries()) {
-            console.log('📦', pair[0] + ':', pair[1]);
-        }
+        console.log('📦 Request body:', JSON.stringify(formData, null, 2));
 
         // Validation
         const nama = document.getElementById('nama_makanan').value.trim();

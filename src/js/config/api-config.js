@@ -13,10 +13,11 @@ const API_CONFIG = {
         // Katalog Makanan Endpoints - Hit langsung ke base URL
         katalog: {
             getAll: '',  // Langsung ke base URL tanpa path
-            getById: (id) => `/${id}`,
+            getById: (id) => `/makanan/${id}`,
             create: '',
-            update: (id) => `/${id}`,
-            delete: (id) => `/${id}`,
+            update: (id) => `/makanan/${id}`,
+            delete: (id) => `/makanan/${id}`,
+            updateStatus: (id) => `/makanan/${id}/status`,
             search: '/search'
         },
         

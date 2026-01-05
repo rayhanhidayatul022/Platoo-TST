@@ -111,6 +111,13 @@ class ApiService {
     }
 
     /**
+     * PATCH request
+     */
+    async patch(endpoint, body, requireAuth = false) {
+        return this.request(endpoint, { method: 'PATCH', body, requireAuth });
+    }
+
+    /**
      * DELETE request
      */
     async delete(endpoint, requireAuth = false) {

@@ -88,57 +88,25 @@ class KatalogService extends ApiService {
 
     /**
      * Create food (ADMIN ONLY)
-     * @param {Object|FormData} foodData - Food data (JSON or FormData for file upload)
+     * @param {Object} foodData - Food data
      * @returns {Promise<Object>} Created food
      */
     async createFood(foodData) {
         try {
             console.log('🔧 KatalogService.createFood called');
-            console.log('📦 Data type:', foodData instanceof FormData ? 'FormData' : 'JSON');
+            console.log('📦 Data to send:', foodData);
             console.log('🌐 Base URL:', this.baseUrl);
             console.log('📍 Endpoint:', API_CONFIG.endpoints.katalog.create);
             console.log('📍 Full URL:', `${this.baseUrl}${API_CONFIG.endpoints.katalog.create}`);
             
-            // If FormData, use fetch directly for multipart/form-data
-            if (foodData instanceof FormData) {
-                const token = localStorage.getItem('platoo_auth_token');
-                const headers = {};
-                
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-                // Don't set Content-Type, browser will set it with boundary
-                
-                console.log('📡 Sending FormData with file upload...');
-                
-                const response = await fetch(`${this.baseUrl}${API_CONFIG.endpoints.katalog.create}`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: foodData
-                });
-                
-                console.log('📥 Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Error response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                const result = await response.json();
-                console.log('✅ Create response:', result);
-                return result.data || result;
-            } else {
-                // Regular JSON post
-                const response = await this.post(
-                    API_CONFIG.endpoints.katalog.create,
-                    foodData,
-                    true // requireAuth
-                );
-                
-                console.log('✅ Create response:', response);
-                return response.data || response;
-            }
+            const response = await this.post(
+                API_CONFIG.endpoints.katalog.create,
+                foodData,
+                true // requireAuth
+            );
+            
+            console.log('✅ Create response:', response);
+            return response.data || response;
         } catch (error) {
             console.error('Error creating food:', error);
             throw error;
@@ -146,9 +114,9 @@ class KatalogService extends ApiService {
     }
 
     /**
-     * Update food (ADMIN ONLY)
+     * Update food (ADMIN ONLY) - Try PATCH method instead of PUT
      * @param {string} id - Food ID
-     * @param {Object|FormData} foodData - Updated food data (JSON or FormData for file upload)
+     * @param {FormData|Object} foodData - Updated food data
      * @returns {Promise<Object>} Updated food
      */
     async updateFood(id, foodData) {
@@ -158,46 +126,16 @@ class KatalogService extends ApiService {
             console.log('📦 Data type:', foodData instanceof FormData ? 'FormData' : 'JSON');
             console.log('📍 Full URL:', `${this.baseUrl}${API_CONFIG.endpoints.katalog.update(id)}`);
             
-            // If FormData, use fetch directly for multipart/form-data
-            if (foodData instanceof FormData) {
-                const token = localStorage.getItem('platoo_auth_token');
-                const headers = {};
-                
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-                // Don't set Content-Type, browser will set it with boundary
-                
-                console.log('📡 Sending FormData with file upload...');
-                
-                const response = await fetch(`${this.baseUrl}${API_CONFIG.endpoints.katalog.update(id)}`, {
-                    method: 'PUT',
-                    headers: headers,
-                    body: foodData
-                });
-                
-                console.log('📥 Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Error response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                const result = await response.json();
-                console.log('✅ Update response:', result);
-                return result.data || result;
-            } else {
-                // Regular JSON put
-                const response = await this.put(
-                    API_CONFIG.endpoints.katalog.update(id),
-                    foodData,
-                    true // requireAuth
-                );
-                
-                console.log('✅ Update response:', response);
-                return response.data || response;
-            }
+            // Try PATCH method instead of PUT (JSON only for now)
+            console.log('🔄 Trying PATCH method...');
+            const response = await this.patch(
+                API_CONFIG.endpoints.katalog.update(id),
+                foodData,
+                true // requireAuth
+            );
+            
+            console.log('✅ Update response:', response);
+            return response.data || response;
         } catch (error) {
             console.error(`Error updating food ${id}:`, error);
             throw error;
@@ -218,6 +156,32 @@ class KatalogService extends ApiService {
             return response;
         } catch (error) {
             console.error(`Error deleting food ${id}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update food status (ADMIN ONLY)
+     * @param {string} id - Food ID
+     * @param {boolean} isAktif - Active status
+     * @returns {Promise<Object>} Update response
+     */
+    async updateStatus(id, isAktif) {
+        try {
+            console.log('🔧 KatalogService.updateStatus called');
+            console.log('📦 Food ID:', id);
+            console.log('📦 is_aktif:', isAktif);
+            
+            const response = await this.post(
+                API_CONFIG.endpoints.katalog.updateStatus(id),
+                { is_aktif: isAktif },
+                true // requireAuth
+            );
+            
+            console.log('✅ Status update response:', response);
+            return response.data || response;
+        } catch (error) {
+            console.error(`Error updating status for food ${id}:`, error);
             throw error;
         }
     }
