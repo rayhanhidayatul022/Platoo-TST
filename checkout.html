@@ -219,6 +219,43 @@
         </div>
     </div>
 
+    <!-- Success Modal -->
+    <div class="modal" id="successModal" style="display: none;">
+        <div class="modal-content success-modal">
+            <div class="modal-body">
+                <div class="success-animation">
+                    <div class="success-checkmark">
+                        <div class="check-icon">
+                            <span class="icon-line line-tip"></span>
+                            <span class="icon-line line-long"></span>
+                            <div class="icon-circle"></div>
+                            <div class="icon-fix"></div>
+                        </div>
+                    </div>
+                </div>
+                <h2 class="success-title">🎉 Pesanan Berhasil!</h2>
+                <p class="success-message" id="successMessage">Pesanan Anda telah berhasil diproses</p>
+                <div class="success-details">
+                    <div class="success-detail-item">
+                        <span class="detail-icon">📦</span>
+                        <div>
+                            <div class="detail-label">Total Item</div>
+                            <div class="detail-value" id="successTotalItems">-</div>
+                        </div>
+                    </div>
+                    <div class="success-detail-item">
+                        <span class="detail-icon">💰</span>
+                        <div>
+                            <div class="detail-label">Total Bayar</div>
+                            <div class="detail-value" id="successTotalPrice">-</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-large btn-finish" onclick="finishCheckout()">Selesai</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Error Modal -->
     <div class="modal" id="errorModal" style="display: none;">
         <div class="modal-content error-modal">

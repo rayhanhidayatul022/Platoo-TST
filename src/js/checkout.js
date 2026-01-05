@@ -178,7 +178,7 @@ async function loadAvailableVouchers() {
     try {
         console.log('📋 Loading vouchers from API...');
         
-        // Fetch vouchers dari API
+        // Fetch vouchers dari API - gunakan production URL
         const VOUCHER_API_URL = 'https://18223022.tesatepadang.space/vouchers';
         console.log('🔄 Fetching from:', VOUCHER_API_URL);
         
@@ -252,38 +252,54 @@ function createVoucherElement(voucher) {
     const div = document.createElement('div');
     div.className = 'voucher-item';
 
-    // Map API fields - cek berbagai kemungkinan nama field
-    const voucherId = voucher.id_voucher || voucher.voucher_id || voucher.id;
-    const voucherName = voucher.nama_voucher || voucher.name || voucher.kode_voucher || 'Voucher';
-    const discountType = voucher.discount_type || voucher.type || 'FIXED';
-    const discountValue = voucher.discount_value || voucher.potongan || voucher.discount || voucher.amount || 0;
-    const stock = voucher.stok !== undefined ? voucher.stok : (voucher.stock !== undefined ? voucher.stock : 999);
-    const minPurchase = voucher.min_order_amount || voucher.minimal || voucher.min_purchase || voucher.minimum_purchase || 0;
-    const expiredDate = voucher.expired_date || voucher.end_date || voucher.valid_until || new Date().toISOString();
+    // Map API fields - sesuaikan dengan response API Voucher
+    const voucherId = voucher.id;
+    const voucherCode = voucher.code || 'N/A';
+    const voucherName = voucher.name || voucher.code || 'Voucher';
+    const discountType = voucher.discount_type || 'FIXED';
+    const discountValue = voucher.discount_value || 0;
+    const minPurchase = voucher.min_order_amount || 0;
+    const maxDiscount = voucher.max_discount_amount;
+    const endDate = voucher.end_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default 30 hari
+    
+    // Calculate remaining redemptions
+    const maxRedemptions = voucher.max_total_redemptions || 1;
+    const totalRedeemed = voucher.total_redeemed || 0;
+    const remainingStock = maxRedemptions - totalRedeemed;
+    
+    // Check if active and valid
+    const isActive = voucher.is_active !== false;
+    const now = new Date();
+    const startAt = voucher.start_at ? new Date(voucher.start_at) : null;
+    const endAt = voucher.end_at ? new Date(voucher.end_at) : null;
+    const isNotStarted = startAt && now < startAt;
+    const isExpired = endAt && now > endAt;
     
     console.log('📊 Mapped voucher data:', {
         voucherId,
+        voucherCode,
         voucherName,
         discountType,
         discountValue,
-        stock,
+        remainingStock,
         minPurchase,
-        expiredDate
+        isActive,
+        isNotStarted,
+        isExpired
     });
 
-    const formattedExpiredDate = new Date(expiredDate).toLocaleDateString('id-ID', {
+    const formattedExpiredDate = new Date(endDate).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'short',
         year: 'numeric'
     });
 
     const isSelected = orderData.selectedVoucherId == voucherId;
-    const isOutOfStock = stock <= 0;
+    const isOutOfStock = remainingStock <= 0 || !isActive || isNotStarted || isExpired;
     
     // Check if order meets minimum requirement
-    const minimalOrder = Number(minPurchase) || 0;
     const currentSubtotal = orderData.subtotal || 0;
-    const meetsMinimum = currentSubtotal >= minimalOrder;
+    const meetsMinimum = currentSubtotal >= minPurchase;
     const canApply = !isOutOfStock && meetsMinimum;
 
     console.log('✓ Voucher validation:', {
@@ -292,11 +308,18 @@ function createVoucherElement(voucher) {
         meetsMinimum,
         canApply,
         currentSubtotal,
-        minimalOrder
+        minPurchase,
+        remainingStock
     });
 
     if (!canApply) {
         div.classList.add('disabled');
+    }
+
+    // Build discount text
+    let discountText = discountType === 'PERCENT' ? `${discountValue}%` : formatCurrency(discountValue);
+    if (discountType === 'PERCENT' && maxDiscount) {
+        discountText += ` (Max ${formatCurrency(maxDiscount)})`;
     }
 
     div.innerHTML = `
@@ -310,14 +333,17 @@ function createVoucherElement(voucher) {
         >
         <div class="voucher-checkbox"></div>
         <div class="voucher-content">
-            <div class="voucher-code">${voucherName}</div>
-            <div class="voucher-discount">Potongan ${discountType === 'PERCENT' ? discountValue + '%' : formatCurrency(discountValue)}</div>
+            <div class="voucher-code">${voucherCode}</div>
+            <div class="voucher-name">${voucherName}</div>
+            <div class="voucher-discount">Potongan ${discountText}</div>
             <div class="voucher-validity">
                 <span>Berlaku hingga ${formattedExpiredDate}</span>
-                <span style="margin-left: 0.5rem;">• Stok: ${stock}</span>
+                <span style="margin-left: 0.5rem;">• Tersisa: ${remainingStock}</span>
             </div>
-            ${!meetsMinimum ? `<div class="voucher-min-order">Min. pembelian ${formatCurrency(minimalOrder)}</div>` : ''}
-            ${!canApply && isOutOfStock ? `<div class="voucher-min-order">Stok habis</div>` : ''}
+            ${!meetsMinimum ? `<div class="voucher-min-order">Min. pembelian ${formatCurrency(minPurchase)}</div>` : ''}
+            ${isNotStarted ? `<div class="voucher-min-order">Belum mulai</div>` : ''}
+            ${isExpired ? `<div class="voucher-min-order">Sudah expired</div>` : ''}
+            ${!canApply && remainingStock <= 0 ? `<div class="voucher-min-order">Stok habis</div>` : ''}
         </div>
     `;
     
@@ -335,13 +361,13 @@ function createVoucherElement(voucher) {
     // Store voucher data in element for easy access
     const voucherData = {
         id: voucherId,
-        voucher_id: voucherId,
-        nama_voucher: voucherName,
+        code: voucherCode,
+        name: voucherName,
         discount_type: discountType,
         discount_value: discountValue,
-        potongan: discountValue,
-        stok: stock,
-        minimal: minPurchase
+        max_discount_amount: maxDiscount,
+        min_order_amount: minPurchase,
+        remaining_stock: remainingStock
     };
 
     // Single click handler for the entire card
@@ -698,26 +724,34 @@ function selectVoucher(voucher) {
         orderData.restaurantDiscount = 0;
         document.getElementById('voucherStatus').innerHTML = '';
     } else {
-        // Check stock availability
-        if (voucher.stok <= 0) {
+        // Check stock availability (calculated from max_total_redemptions - total_redeemed)
+        const remainingStock = (voucher.max_total_redemptions || 1) - (voucher.total_redeemed || 0);
+        
+        if (remainingStock <= 0) {
             const statusEl = document.getElementById('voucherStatus');
             statusEl.className = 'voucher-status error';
-            statusEl.innerHTML = `? Voucher <strong>${voucher.nama_voucher}</strong> sudah habis!`;
+            statusEl.innerHTML = `❌ Voucher <strong>${voucher.code || voucher.name}</strong> sudah habis!`;
             return;
         }
 
         // Select voucher
-        orderData.selectedVoucherId = voucher.voucher_id || voucher.id_voucher || voucher.id;
+        orderData.selectedVoucherId = voucher.id;
         orderData.selectedVoucher = voucher;
 
-        // Calculate discount based on type
-        const discountType = voucher.discount_type || voucher.type || 'FIXED';
-        const discountValue = Number(voucher.discount_value || voucher.potongan || voucher.discount || 0);
+        // Calculate discount based on type (preview only - actual calculation akan di backend saat redeem)
+        const discountType = voucher.discount_type || 'FIXED';
+        const discountValue = Number(voucher.discount_value || 0);
+        const maxDiscount = voucher.max_discount_amount;
         let discountAmount = 0;
 
         if (discountType === 'PERCENT') {
             // Calculate percentage of subtotal (tanpa PPN)
             discountAmount = (orderData.subtotal * discountValue) / 100;
+            
+            // Apply max discount limit if exists
+            if (maxDiscount && discountAmount > maxDiscount) {
+                discountAmount = maxDiscount;
+            }
         } else {
             // FIXED discount
             discountAmount = discountValue;
@@ -779,95 +813,37 @@ async function confirmCheckout() {
     showLoadingOverlay(true);
 
     try {
-        // Create order
-        const result = await createOrder();
-
-        // Check payment method
-        if (orderData.selectedPaymentMethod === 'cash') {
-            // Cash payment - kurangi stok sekarang
-            await updateFoodStock();
-
-            // Update voucher stock if voucher was used
-            let voucherUpdateResult = null;
-            if (orderData.selectedVoucher) {
-                console.log('? About to update voucher stock...');
-                voucherUpdateResult = await updateVoucherStock();
-                console.log('?? Voucher update result:', voucherUpdateResult);
+        // 1. Redeem voucher terlebih dahulu (jika ada) - ini akan validasi dan calculate discount
+        console.log('🔍 DEBUG: orderData.selectedVoucher =', orderData.selectedVoucher);
+        if (orderData.selectedVoucher) {
+            console.log('=== Redeeming voucher ===');
+            try {
+                await redeemVoucher();
+                console.log('✅ Voucher redemption SUCCESS');
+            } catch (voucherError) {
+                console.error('❌ Voucher redemption FAILED:', voucherError);
+                // STOP checkout jika voucher gagal
+                throw voucherError;
             }
-            
-            // Save voucher result to localStorage for debugging
-            if (orderData.selectedVoucher) {
-                const debugInfo = {
-                    updated: voucherUpdateResult?.success || false,
-                    voucherId: orderData.selectedVoucher.voucher_id,
-                    voucherName: orderData.selectedVoucher.nama_voucher,
-                    oldStock: voucherUpdateResult?.oldStock,
-                    newStock: voucherUpdateResult?.newStock,
-                    error: voucherUpdateResult?.error || null,
-                    timestamp: new Date().toISOString(),
-                    paymentMethod: 'cash'
-                };
-                console.log('?? Saving to localStorage:', debugInfo);
-                localStorage.setItem('platoo_last_voucher_result', JSON.stringify(debugInfo));
-            }
-
-            // Send email confirmation
-            const emailResult = await sendOrderEmail(result.displayId);
-            
-            // Save email result untuk debugging
-            localStorage.setItem('platoo_last_email_result', JSON.stringify({
-                sent: emailResult?.success || false,
-                error: emailResult?.error || null,
-                timestamp: new Date().toISOString(),
-                orderId: result.displayId,
-                userEmail: currentUser.email,
-                emailServiceLoaded: typeof sendOrderConfirmationEmail === 'function'
-            }));
-
-            // Save order info to localStorage
-            localStorage.setItem('platoo_last_order', JSON.stringify(result.orderIds));
-
-            // Clear cart
-            localStorage.removeItem('platoo_cart');
-            localStorage.removeItem('platoo_pending_order');
-
-            showLoadingOverlay(false);
-
-            // Go directly to order status
-            window.location.href = `order-status.html?order=${result.displayId}&payment=cash`;
         } else {
-            // Virtual Account or E-Wallet - BELUM kurangi stok
-            // Simpan data items untuk dikurangi nanti setelah konfirmasi pembayaran
-            const paymentData = {
-                method: orderData.selectedPaymentMethod,
-                amount: orderData.totalPrice,
-                orderId: result.displayId,
-                orderIds: result.orderIds,
-                items: orderData.items, // Simpan items untuk pengurangan stok nanti
-                voucher: orderData.selectedVoucher, // Simpan voucher untuk pengurangan stok nanti
-                restaurantId: orderData.restaurantId, // Simpan restaurant ID untuk cancel
-                restaurantInfo: orderData.restaurantInfo // Simpan restaurant info untuk cancel
-            };
-            
-            console.log('?? Saving payment data to localStorage:', paymentData);
-            console.log('?? Total price:', orderData.totalPrice);
-            
-            localStorage.setItem('platoo_payment_pending', JSON.stringify(paymentData));
-            
-            // Verify saved data
-            const savedData = localStorage.getItem('platoo_payment_pending');
-            console.log('? Verified saved data:', JSON.parse(savedData));
-
-            // JANGAN hapus cart dulu - baru hapus setelah payment confirmed
-            // Ini agar user bisa kembali ke checkout jika cancel
-
-            showLoadingOverlay(false);
-
-            // Go to payment confirmation page
-            window.location.href = 'payment-confirmation.html';
+            console.log('⚠️ No voucher selected, skipping redemption');
         }
+
+        // 2. Update stok katalog untuk setiap item
+        console.log('=== Updating katalog stock ===');
+        await updateKatalogStock();
+
+        // Clear cart
+        localStorage.removeItem('platoo_cart');
+        localStorage.removeItem('platoo_pending_order');
+
+        showLoadingOverlay(false);
+
+        // Show success modal dengan data pesanan
+        showSuccessModal();
+
     } catch (error) {
-        console.error('? Error confirming checkout:', error);
+        console.error('❌ Error confirming checkout:', error);
         console.error('Error details:', {
             message: error.message,
             stack: error.stack,
@@ -875,7 +851,7 @@ async function confirmCheckout() {
             orderData: orderData
         });
         showLoadingOverlay(false);
-        showErrorModal('Terjadi Kesalahan\n\nSilakan setujui syarat dan ketentuan');
+        showErrorModal(`Terjadi Kesalahan\n\n${error.message || 'Gagal memproses pesanan. Silakan coba lagi.'}`);
     }
 }
 
@@ -896,23 +872,17 @@ async function createOrder() {
         console.log('?? currentUser values:', currentUser);
         
         // Try multiple possible ID field names
-        const possibleUserId = currentUser.id || 
-                              currentUser.id_pembeli || 
-                              currentUser.pembeli_id ||
-                              currentUser.userId;
+        const userId = currentUser.id || 
+                       currentUser.id_pembeli || 
+                       currentUser.pembeli_id ||
+                       currentUser.userId;
         
-        if (!possibleUserId) {
+        if (!userId) {
             console.error('? No user ID found in currentUser:', currentUser);
             throw new Error('User ID tidak ditemukan');
         }
         
-        // Pastikan user ID adalah integer
-        const userId = parseInt(possibleUserId);
-        if (isNaN(userId)) {
-            console.error('? Invalid user ID:', possibleUserId);
-            throw new Error('User ID tidak valid');
-        }
-        console.log('? User ID (converted to int):', userId, typeof userId);
+        console.log('? User ID:', userId, typeof userId);
         
         // Get max order_id dari database untuk auto-increment manual
         const { data: maxOrderData } = await supabaseClient
@@ -963,6 +933,197 @@ async function createOrder() {
     } catch (error) {
         console.error('? Error creating order:', error);
         throw error;
+    }
+}
+
+async function updateKatalogStock() {
+    try {
+        console.log('Updating katalog stock for items:', orderData.items);
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const item of orderData.items) {
+            try {
+                // GET current stock dari API katalog - langsung ambil semua data
+                const getResponse = await fetch('https://18223044.tesatepadang.space/');
+                
+                if (!getResponse.ok) {
+                    console.error(`❌ Failed to get catalog data: ${getResponse.status}`);
+                    failCount++;
+                    continue;
+                }
+                
+                const allFoods = await getResponse.json();
+                
+                // Cari makanan dengan catalog_id yang sesuai
+                const foodData = allFoods.find(food => food.catalog_id === parseInt(item.id));
+                
+                if (!foodData) {
+                    console.warn(`⚠️ Item ${item.id} (${item.name}) tidak ditemukan di katalog`);
+                    failCount++;
+                    continue;
+                }
+                
+                console.log(`📦 Current stock for ${item.name}:`, foodData.stok);
+                
+                // Calculate new stock
+                const newStock = Math.max(0, foodData.stok - item.quantity);
+                console.log(`📉 New stock for ${item.name}:`, newStock);
+                
+                // PATCH to update stock
+                const updateResponse = await fetch(`https://18223044.tesatepadang.space/makanan/${item.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stok: newStock
+                    })
+                });
+                
+                if (!updateResponse.ok) {
+                    console.error(`❌ Failed to update stock for item ${item.id}: ${updateResponse.status}`);
+                    const errorText = await updateResponse.text();
+                    console.error('Error response:', errorText);
+                    failCount++;
+                    continue;
+                }
+                
+                const updateResult = await updateResponse.json();
+                console.log(`✅ Stock updated for ${item.name}:`, updateResult);
+                successCount++;
+                
+            } catch (error) {
+                console.error(`❌ Error updating stock for item ${item.id}:`, error);
+                failCount++;
+            }
+        }
+        
+        console.log(`✅ Stock update summary: ${successCount} success, ${failCount} failed out of ${orderData.items.length} items`);
+        
+        if (successCount === 0 && failCount > 0) {
+            throw new Error('Gagal mengupdate stok makanan. Silakan coba lagi.');
+        }
+        
+    } catch (error) {
+        console.error('❌ Critical error updating katalog stock:', error);
+        throw error;
+    }
+}
+
+/**
+ * Redeem voucher menggunakan manual update (bypass validasi "sudah pernah pakai")
+ * Karena backend /redeem memblock user yang sudah pernah pakai,
+ * kita manual update via PUT endpoint
+ */
+async function redeemVoucher() {
+    if (!orderData.selectedVoucher) {
+        console.log('No voucher selected');
+        return;
+    }
+    
+    try {
+        // Get voucher code
+        const voucherCode = orderData.selectedVoucher.code || 
+                           orderData.selectedVoucher.nama_voucher || 
+                           orderData.selectedVoucher.kode_voucher;
+        
+        const voucherId = orderData.selectedVoucher.id;
+        
+        if (!voucherCode || !voucherId) {
+            throw new Error('Voucher code atau ID tidak ditemukan');
+        }
+        
+        console.log('Redeeming voucher:', voucherCode);
+        console.log('Voucher ID:', voucherId);
+        console.log('Order amount:', orderData.totalPrice);
+        
+        // Get auth token dari localStorage
+        let authToken = null;
+        
+        // Method 1: Check standalone token keys
+        authToken = localStorage.getItem('platoo_auth_token') || 
+                   localStorage.getItem('authToken') ||
+                   localStorage.getItem('auth_token');
+        
+        if (!authToken) {
+            // Method 2: Check inside platoo_user object
+            const userDataJson = localStorage.getItem('platoo_user');
+            if (userDataJson) {
+                try {
+                    const userData = JSON.parse(userDataJson);
+                    authToken = userData.access_token || 
+                               userData.token || 
+                               userData.session?.access_token;
+                } catch (err) {
+                    console.error('Error parsing user data:', err);
+                }
+            }
+        }
+        
+        console.log('🔍 Token found:', authToken ? 'YES' : 'NO');
+        
+        // Jika tidak ada token, skip redemption
+        if (!authToken) {
+            console.warn('⚠️ No auth token, skipping voucher redemption');
+            showNotification('Voucher tidak dapat divalidasi. Diskon tetap diterapkan.', 'warning');
+            return;
+        }
+        
+        console.log('✅ Auth token ready, updating voucher manually...');
+        
+        // Step 1: GET current voucher data
+        console.log('📡 Getting current voucher data...');
+        const getResponse = await fetch(`https://18223022.tesatepadang.space/vouchers/${voucherCode}`);
+        
+        if (!getResponse.ok) {
+            throw new Error('Gagal mengambil data voucher');
+        }
+        
+        const voucherData = await getResponse.json();
+        console.log('📦 Current voucher data:', voucherData);
+        
+        const currentVoucher = voucherData.data || voucherData;
+        
+        // Step 2: Calculate new values
+        const currentTotalRedeemed = currentVoucher.total_redeemed || 0;
+        const newTotalRedeemed = currentTotalRedeemed + 1;
+        
+        console.log(`📊 Updating: total_redeemed ${currentTotalRedeemed} -> ${newTotalRedeemed}`);
+        
+        // Step 3: PUT update voucher (increment total_redeemed)
+        console.log('📡 Updating voucher via PUT...');
+        const updateResponse = await fetch(`https://18223022.tesatepadang.space/vouchers/${voucherId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                total_redeemed: newTotalRedeemed
+            })
+        });
+        
+        console.log('📥 Update response status:', updateResponse.status);
+        
+        if (!updateResponse.ok) {
+            const errorData = await updateResponse.json().catch(() => ({}));
+            console.error('❌ Failed to update voucher:', errorData);
+            throw new Error(errorData.message || 'Gagal update voucher');
+        }
+        
+        const updateResult = await updateResponse.json();
+        console.log('✅ Voucher updated successfully:', updateResult);
+        
+        showNotification('Voucher berhasil digunakan!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Error redeeming voucher:', error);
+        
+        // Jangan throw error - biarkan checkout tetap jalan
+        console.warn('⚠️ Voucher redemption failed, but checkout will continue');
+        showNotification('Voucher tidak dapat diproses, tapi checkout tetap dilanjutkan.', 'warning');
     }
 }
 
@@ -1097,6 +1258,28 @@ function showErrorModal(message) {
     document.getElementById('errorModal').style.display = 'flex';
 }
 
+function showSuccessModal() {
+    const modal = document.getElementById('successModal');
+    if (!modal) {
+        showNotification('Pesanan berhasil!', 'success');
+        setTimeout(() => window.location.href = 'dashboard-pembeli.html', 1500);
+        return;
+    }
+    
+    // Populate data
+    const totalItems = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+    document.getElementById('successTotalItems').textContent = totalItems + ' item';
+    document.getElementById('successTotalPrice').textContent = formatCurrency(orderData.totalPrice);
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+// Function untuk button Selesai
+function finishCheckout() {
+    window.location.href = 'dashboard-pembeli.html';
+}
+
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
@@ -1109,9 +1292,17 @@ function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
+    
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+    
     notification.innerHTML = `
         <div class="notification-content">
-            <span class="notification-icon">${type === 'success' ? '?' : type === 'error' ? '?' : '?'}</span>
+            <span class="notification-icon">${icons[type] || icons.info}</span>
             <span class="notification-message">${message}</span>
         </div>
     `;
