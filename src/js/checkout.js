@@ -1071,10 +1071,10 @@ async function redeemVoucher() {
             return;
         }
         
-        console.log('✅ Auth token ready, updating voucher manually...');
+        console.log('✅ Auth token ready');
         
-        // Step 1: GET current voucher data
-        console.log('📡 Getting current voucher data...');
+        // Validasi voucher dengan GET current data
+        console.log('📡 Validating voucher data...');
         const getResponse = await fetch(`https://18223022.tesatepadang.space/vouchers/${voucherCode}`);
         
         if (!getResponse.ok) {
@@ -1082,41 +1082,25 @@ async function redeemVoucher() {
         }
         
         const voucherData = await getResponse.json();
-        console.log('📦 Current voucher data:', voucherData);
+        console.log('📦 Voucher data:', voucherData);
         
         const currentVoucher = voucherData.data || voucherData;
         
-        // Step 2: Calculate new values
+        // Cek apakah voucher masih bisa dipakai
         const currentTotalRedeemed = currentVoucher.total_redeemed || 0;
-        const newTotalRedeemed = currentTotalRedeemed + 1;
+        const maxUsage = currentVoucher.max_usage || Infinity;
         
-        console.log(`📊 Updating: total_redeemed ${currentTotalRedeemed} -> ${newTotalRedeemed}`);
-        
-        // Step 3: PUT update voucher (increment total_redeemed)
-        console.log('📡 Updating voucher via PUT...');
-        const updateResponse = await fetch(`https://18223022.tesatepadang.space/vouchers/${voucherId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({
-                total_redeemed: newTotalRedeemed
-            })
-        });
-        
-        console.log('📥 Update response status:', updateResponse.status);
-        
-        if (!updateResponse.ok) {
-            const errorData = await updateResponse.json().catch(() => ({}));
-            console.error('❌ Failed to update voucher:', errorData);
-            throw new Error(errorData.message || 'Gagal update voucher');
+        if (currentTotalRedeemed >= maxUsage) {
+            throw new Error('Voucher sudah mencapai batas penggunaan maksimal');
         }
         
-        const updateResult = await updateResponse.json();
-        console.log('✅ Voucher updated successfully:', updateResult);
+        console.log(`✅ Voucher valid - Digunakan: ${currentTotalRedeemed}/${maxUsage}`);
         
-        showNotification('Voucher berhasil digunakan!', 'success');
+        // Voucher info akan dikirim ke backend saat create order
+        // Backend yang akan handle update total_redeemed
+        console.log('✅ Voucher akan diproses oleh backend saat order dibuat');
+        
+        showNotification('Voucher siap digunakan!', 'success');
         
     } catch (error) {
         console.error('❌ Error redeeming voucher:', error);
