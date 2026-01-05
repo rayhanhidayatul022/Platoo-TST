@@ -1,278 +1,408 @@
-const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
+/**
+ * Dashboard Pembeli - Direct Catalog View
+ * Shows food catalog directly from Katalog API
+ */
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const KATALOG_API_URL = 'https://18223044.tesatepadang.space';
 
-let allRestaurants = [];
-let currentFilter = 'all';
+let allFoods = [];
+let cart = JSON.parse(localStorage.getItem('platoo_cart') || '[]');
 
 // Check authentication
 document.addEventListener('DOMContentLoaded', async function() {
     checkAuth();
-    await loadRestaurants();
+    await loadFoods();
     setupEventListeners();
+    updateCartBadge();
 });
+
+// Expose functions to window for onclick handlers
+window.addToCart = addToCart;
+window.incrementQuantity = incrementQuantity;
+window.decrementQuantity = decrementQuantity;
 
 function checkAuth() {
     const user = JSON.parse(localStorage.getItem('platoo_user') || '{}');
     
-    // Check if user exists and is pembeli
-    if (!user || !user.username || user.role !== 'pembeli') {
-        console.log('Auth check failed:', user);
+    // Check if user exists - check for email or id instead of username
+    if (!user || !user.email) {
+        console.log('Auth check failed: no user data');
         window.location.href = 'login.html';
+        return;
+    }
+    
+    // If role is penjual, redirect to penjual dashboard
+    if (user.role === 'penjual' || user.role === 'admin') {
+        console.log('User is penjual/admin, redirecting...');
+        window.location.href = 'dashboard-penjual.html';
         return;
     }
     
     console.log('Auth success:', user);
     
     // Set user info
-    document.getElementById('userName').textContent = user.nama || user.username || 'Pembeli';
-    document.getElementById('welcomeName').textContent = user.nama || user.username || 'Pembeli';
-    document.getElementById('userInitial').textContent = (user.nama || user.username || 'P').charAt(0).toUpperCase();
+    const userName = document.getElementById('userName');
+    const welcomeName = document.getElementById('welcomeName');
+    const userInitial = document.getElementById('userInitial');
+    
+    if (userName) userName.textContent = user.nama || user.email || 'Pembeli';
+    if (welcomeName) welcomeName.textContent = user.nama || user.email || 'Pembeli';
+    if (userInitial) userInitial.textContent = (user.nama || user.email || 'P').charAt(0).toUpperCase();
 }
 
 function setupEventListeners() {
     // Logout button
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-        localStorage.removeItem('platoo_user');
-        window.location.href = 'login.html';
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('platoo_user');
+            localStorage.removeItem('platoo_cart');
+            localStorage.removeItem('platoo_auth_token');
+            window.location.href = 'login.html';
+        });
+    }
     
     // Search functionality
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        filterRestaurants(searchTerm);
-    });
-    
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentFilter = this.dataset.filter;
-            filterRestaurants();
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filterFoods(searchTerm);
         });
-    });
-    
-    // Advanced filter button
-    document.getElementById('advancedFilterBtn').addEventListener('click', function() {
-        showNotification('Fitur filter lanjutan akan segera hadir!', 'info');
-    });
+    }
 }
 
-async function loadRestaurants() {
+async function loadFoods() {
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
     const restaurantGrid = document.getElementById('restaurantGrid');
     
     try {
-        console.log('Loading restaurants...');
-        loadingState.style.display = 'block';
-        emptyState.style.display = 'none';
-        restaurantGrid.innerHTML = '';
+        console.log('🔄 Loading foods from API...');
         
-        // Fetch restaurants from Supabase
-        const { data: restaurants, error } = await supabaseClient
-            .from('restoran')
-            .select('*')
-            .order('created_at', { ascending: false });
+        if (loadingState) loadingState.style.display = 'block';
+        if (emptyState) emptyState.style.display = 'none';
+        if (restaurantGrid) restaurantGrid.innerHTML = '';
         
-        console.log('Supabase response:', { restaurants, error });
+        const response = await fetch(KATALOG_API_URL);
         
-        if (error) {
-            console.error('Supabase error:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error('Failed to load foods');
         }
         
-        // Sort: Restaurants dengan ads true tampil paling atas, sisanya by id
-        allRestaurants = (restaurants || []).sort((a, b) => {
-            // Priority 1: ads (true first)
-            if (a.ads && !b.ads) return -1;
-            if (!a.ads && b.ads) return 1;
-            
-            // Priority 2: By id_penjual (ascending)
-            return a.id_penjual - b.id_penjual;
-        });
+        const foods = await response.json();
+        console.log('✅ Foods loaded:', foods);
         
-        console.log('Total restaurants loaded:', allRestaurants.length);
-        console.log('Ads restaurants:', allRestaurants.filter(r => r.ads).length);
+        // Filter only foods with resto_id = 1 (show all, including non-active)
+        allFoods = foods.filter(food => food.resto_id === 1);
+        console.log('✅ Filtered foods for resto_id 1:', allFoods.length);
         
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
         
-        if (allRestaurants.length === 0) {
-            console.log('No restaurants found, showing empty state');
-            emptyState.style.display = 'block';
+        if (allFoods.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
         } else {
-            console.log('Displaying restaurants:', allRestaurants);
-            displayRestaurants(allRestaurants);
-            updateStats();
+            renderFoods(allFoods);
         }
-        
     } catch (error) {
-        console.error('Error loading restaurants:', error);
-        loadingState.style.display = 'none';
-        emptyState.style.display = 'block';
-        showNotification('Gagal memuat data restoran: ' + error.message, 'error');
+        console.error('Error loading foods:', error);
+        if (loadingState) loadingState.style.display = 'none';
+        showError('Gagal memuat katalog makanan');
     }
 }
 
-function displayRestaurants(restaurants) {
-    const restaurantGrid = document.getElementById('restaurantGrid');
-    restaurantGrid.innerHTML = '';
+function filterFoods(searchTerm = '') {
+    let filtered = allFoods;
     
-    if (restaurants.length === 0) {
-        document.getElementById('emptyState').style.display = 'block';
-        return;
-    }
-    
-    document.getElementById('emptyState').style.display = 'none';
-    
-    restaurants.forEach(restaurant => {
-        const card = createRestaurantCard(restaurant);
-        restaurantGrid.appendChild(card);
-    });
-}
-
-function createRestaurantCard(restaurant) {
-    const card = document.createElement('div');
-    card.className = 'restaurant-card';
-    
-    // Add special class for ads restaurants
-    if (restaurant.ads) {
-        card.classList.add('restaurant-card-ads');
-    }
-    
-    card.onclick = () => viewRestaurantCatalog(restaurant.id_penjual);
-    
-    // Use restaurant photo if available, otherwise use emoji
-    const emojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
-    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-    
-    const hasPhoto = restaurant.foto_url && restaurant.foto_url.trim() !== '';
-    const rating = restaurant.rate ? restaurant.rate.toFixed(1) : '0.0';
-    
-    card.innerHTML = `
-        <div class="card-image ${hasPhoto ? 'has-photo' : ''}">
-            ${hasPhoto 
-                ? `<img src="${restaurant.foto_url}" alt="${restaurant.nama_restoran}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                   <span style="display:none;">${randomEmoji}</span>`
-                : `<span>${randomEmoji}</span>`
-            }
-            ${restaurant.ads ? '<div class="ads-badge">Ad</div>' : ''}
-            <div class="card-badge">
-                ? ${rating}
-            </div>
-        </div>
-        <div class="card-content">
-            <div class="card-header">
-                <h3 class="card-title">${restaurant.nama_restoran}</h3>
-                <div class="card-location">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0C5.2 0 3 2.2 3 5c0 3.9 5 11 5 11s5-7.1 5-11c0-2.8-2.2-5-5-5zm0 7.5c-1.4 0-2.5-1.1-2.5-2.5S6.6 2.5 8 2.5s2.5 1.1 2.5 2.5S9.4 7.5 8 7.5z"/>
-                    </svg>
-                    <span>${truncateText(restaurant.alamat, 35)}</span>
-                </div>
-            </div>
-            <div class="card-info">
-                <div class="card-phone">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/>
-                    </svg>
-                    <span>${restaurant.nomor_telepon}</span>
-                </div>
-                <button class="card-button" onclick="event.stopPropagation(); viewRestaurantCatalog(${restaurant.id_penjual})">
-                    Lihat Menu
-                </button>
-            </div>
-        </div>
-    `;
-    
-    return card;
-}
-
-function truncateText(text, maxLength) {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-function filterRestaurants(searchTerm = '') {
-    let filtered = allRestaurants;
-    
-    // Filter by search term
+    // Apply search
     if (searchTerm) {
-        filtered = filtered.filter(restaurant => 
-            restaurant.nama_restoran.toLowerCase().includes(searchTerm) ||
-            restaurant.alamat.toLowerCase().includes(searchTerm)
+        filtered = filtered.filter(food => 
+            food.nama_makanan.toLowerCase().includes(searchTerm) ||
+            (food.deskripsi && food.deskripsi.toLowerCase().includes(searchTerm))
         );
     }
     
-    // Filter by category
-    if (currentFilter === 'popular') {
-        filtered = filtered.filter(restaurant => {
-            const rate = restaurant.rate || 0;
-            return rate >= 4.5;
+    renderFoods(filtered);
+}
+
+function renderFoods(foods) {
+    const grid = document.getElementById('restaurantGrid') || document.getElementById('foodGrid');
+    const totalFoods = document.getElementById('totalFoods');
+    
+    if (!grid) {
+        console.error('Grid element not found');
+        return;
+    }
+    
+    // Update counter
+    if (totalFoods) {
+        totalFoods.textContent = foods.length;
+    }
+    
+    if (foods.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">🍽️</div>
+                <h3 style="color: #6b7280; margin-bottom: 8px;">Tidak ada menu tersedia</h3>
+                <p style="color: #9ca3af;">Coba kata kunci lain</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = foods.map(food => createFoodCard(food)).join('');
+}
+
+function createFoodCard(food) {
+    const imageUrl = food.foto || food.image_url || '/src/img/placeholder-food.png';
+    const isAvailable = food.is_aktif && food.stok > 0;
+    const foodId = food.catalog_id || food.id;
+    
+    // Check if item is in cart
+    const cartItem = cart.find(item => item.id === foodId);
+    const inCart = cartItem !== undefined;
+    const quantity = inCart ? cartItem.quantity : 0;
+    
+    // Status badge
+    let statusBadge = '';
+    if (!food.is_aktif) {
+        statusBadge = '<div class="sold-out-badge" style="position: absolute; top: 10px; right: 10px; background: #dc2626; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">Tidak Aktif</div>';
+    } else if (food.stok === 0) {
+        statusBadge = '<div class="sold-out-badge" style="position: absolute; top: 10px; right: 10px; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">Habis</div>';
+    }
+    
+    // Button HTML - show quantity selector if in cart
+    let buttonHtml;
+    if (!isAvailable) {
+        buttonHtml = `
+            <button class="btn-order" disabled style="background: #d1d5db; cursor: not-allowed;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                Tidak Tersedia
+            </button>
+        `;
+    } else if (inCart) {
+        buttonHtml = `
+            <div class="quantity-selector" id="quantity-${foodId}" data-max-stock="${food.stok}">
+                <button class="qty-btn qty-minus" onclick="decrementQuantity(${foodId})">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <div class="qty-display">
+                    <span class="qty-number">${quantity}</span>
+                    <span class="qty-label">di keranjang</span>
+                </div>
+                <button class="qty-btn qty-plus" onclick="incrementQuantity(${foodId}, '${food.nama_makanan.replace(/'/g, "\\'")}', ${food.harga}, '${imageUrl}', ${food.stok})" ${quantity >= food.stok ? 'disabled' : ''}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        `;
+    } else {
+        buttonHtml = `
+            <button class="btn-order" onclick="addToCart(${foodId}, '${food.nama_makanan.replace(/'/g, "\\'")}', ${food.harga}, '${imageUrl}', ${food.stok})">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                Tambah ke Keranjang
+            </button>
+        `;
+    }
+    
+    return `
+        <div class="restaurant-card" style="${!isAvailable ? 'opacity: 0.7;' : ''}">
+            <div class="card-image">
+                <img src="${imageUrl}" alt="${food.nama_makanan}" onerror="this.src='/src/img/placeholder-food.png'">
+                ${statusBadge}
+            </div>
+            <div class="card-content">
+                <h3 class="card-title">${food.nama_makanan}</h3>
+                ${food.deskripsi ? `<p class="card-description">${food.deskripsi.substring(0, 80)}${food.deskripsi.length > 80 ? '...' : ''}</p>` : ''}
+                <div class="card-meta">
+                    <span class="rating" style="font-weight: 700; color: #4B0082;">Rp ${parseInt(food.harga).toLocaleString('id-ID')}</span>
+                    <span class="address" style="color: #6b7280;">Stok: ${food.stok}</span>
+                </div>
+                ${buttonHtml}
+            </div>
+        </div>
+    `;
+}
+
+function addToCart(foodId, name, price, image, maxStock) {
+    const existing = cart.find(item => item.id === foodId);
+    
+    if (existing) {
+        if (existing.quantity >= maxStock) {
+            showToast('Stok tidak mencukupi!', 'error');
+            return;
+        }
+        existing.quantity += 1;
+    } else {
+        cart.push({
+            id: foodId,
+            name: name,
+            price: price,
+            image: image,
+            quantity: 1,
+            maxStock: maxStock
         });
     }
     
-    // Always sort with Ads restaurants first
-    filtered.sort((a, b) => {
-        // Priority 1: ads (true first)
-        if (a.ads && !b.ads) return -1;
-        if (!a.ads && b.ads) return 1;
+    localStorage.setItem('platoo_cart', JSON.stringify(cart));
+    updateCartBadge();
+    
+    // Re-render the food cards to show quantity selector
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    filterFoods(searchTerm);
+    
+    showToast('Berhasil ditambahkan ke keranjang!', 'success');
+}
+
+function incrementQuantity(foodId, name, price, image, maxStock) {
+    const existing = cart.find(item => item.id === foodId);
+    
+    if (!existing) return;
+    
+    if (existing.quantity >= maxStock) {
+        showToast('Stok tidak mencukupi!', 'error');
+        return;
+    }
+    
+    existing.quantity += 1;
+    localStorage.setItem('platoo_cart', JSON.stringify(cart));
+    updateCartBadge();
+    
+    // Update only the quantity display without re-rendering
+    updateQuantityDisplay(foodId, existing.quantity, maxStock);
+}
+
+function decrementQuantity(foodId) {
+    const existing = cart.find(item => item.id === foodId);
+    
+    if (!existing) return;
+    
+    if (existing.quantity <= 1) {
+        // Remove from cart - need to re-render to show button again
+        cart = cart.filter(item => item.id !== foodId);
+        localStorage.setItem('platoo_cart', JSON.stringify(cart));
+        updateCartBadge();
         
-        // Priority 2: For popular filter, sort by rating
-        if (currentFilter === 'popular') {
-            return (b.rate || 0) - (a.rate || 0);
+        const searchInput = document.getElementById('searchInput');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        filterFoods(searchTerm);
+        
+        showToast('Item dihapus dari keranjang', 'warning');
+    } else {
+        existing.quantity -= 1;
+        localStorage.setItem('platoo_cart', JSON.stringify(cart));
+        updateCartBadge();
+        
+        // Update only the quantity display
+        const selector = document.getElementById(`quantity-${foodId}`);
+        const maxStock = selector ? parseInt(selector.dataset.maxStock) : 999;
+        updateQuantityDisplay(foodId, existing.quantity, maxStock);
+    }
+}
+
+function updateQuantityDisplay(foodId, quantity, maxStock) {
+    const selector = document.getElementById(`quantity-${foodId}`);
+    if (!selector) return;
+    
+    // Update quantity number
+    const qtyNumber = selector.querySelector('.qty-number');
+    if (qtyNumber) {
+        qtyNumber.textContent = quantity;
+    }
+    
+    // Update plus button disabled state
+    const plusBtn = selector.querySelector('.qty-plus');
+    if (plusBtn) {
+        if (quantity >= maxStock) {
+            plusBtn.setAttribute('disabled', 'true');
+        } else {
+            plusBtn.removeAttribute('disabled');
         }
-        
-        // Priority 3: Default - by id_penjual
-        return a.id_penjual - b.id_penjual;
-    });
+    }
+}
+
+function updateCartBadge() {
+    const badge = document.getElementById('cartBadge');
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     
-    displayRestaurants(filtered);
+    if (badge) {
+        badge.textContent = totalItems;
+        badge.style.display = totalItems > 0 ? 'flex' : 'none';
+    }
 }
 
-function updateStats() {
-    // Update total restaurants
-    document.getElementById('totalRestaurants').textContent = allRestaurants.length;
-    updateFilterCounts();
-}
-
-function updateFilterCounts() {
-    const total = allRestaurants.length;
-    const popular = allRestaurants.filter(r => (r.rate || 0) >= 4.5).length;
-    
-    document.getElementById('countAll').textContent = total;
-    document.getElementById('countAvailable').textContent = total;
-    document.getElementById('countPopular').textContent = popular;
-}
-
-function viewRestaurantCatalog(restaurantId) {
-    // Navigate to catalog page with restaurant ID
-    window.location.href = `catalog.html?id=${restaurantId}`;
-}
-
-function showNotification(message, type = 'info') {
-    // Simple notification (you can make it more fancy)
-    const notification = document.createElement('div');
-    notification.style.cssText = `
+function showToast(message, type = 'success') {
+    // Simple toast notification
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? '#10b981' : '#dc2626';
+    toast.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: 20px;
         right: 20px;
-        padding: 1rem 1.5rem;
-        background: ${type === 'error' ? '#fee' : '#efe'};
-        color: ${type === 'error' ? '#c33' : '#3c3'};
+        background: ${bgColor};
+        color: white;
+        padding: 16px 24px;
         border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         z-index: 10000;
+        animation: slideIn 0.3s ease;
         font-weight: 600;
     `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
+    toast.textContent = message;
+    document.body.appendChild(toast);
     
     setTimeout(() => {
-        notification.remove();
-    }, 3000);
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
 }
 
-console.log('Dashboard Pembeli loaded successfully!');
+function showError(message) {
+    const grid = document.getElementById('restaurantGrid');
+    if (grid) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
+                <h3 style="color: #dc2626; margin-bottom: 8px;">Terjadi Kesalahan</h3>
+                <p style="color: #6b7280;">${message}</p>
+                <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 24px; background: #4B0082; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Coba Lagi</button>
+            </div>
+        `;
+    }
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);

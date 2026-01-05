@@ -13,10 +13,12 @@ class VoucherService extends ApiService {
      */
     async getAllVouchers() {
         try {
+            console.log('🔄 Fetching vouchers from:', `${this.baseUrl}${API_CONFIG.endpoints.voucher.getAll}`);
             const response = await this.get(API_CONFIG.endpoints.voucher.getAll);
+            console.log('✅ Vouchers fetched successfully:', response);
             return response.data || response;
         } catch (error) {
-            console.error('Error fetching vouchers:', error);
+            console.error('❌ Error fetching vouchers:', error);
             throw error;
         }
     }

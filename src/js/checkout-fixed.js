@@ -176,54 +176,17 @@ async function initializeCheckout() {
 
 async function loadAvailableVouchers() {
     try {
-        console.log('📋 Loading vouchers from API...');
+        console.log('📋 Loading vouchers...');
         
-        // Fetch vouchers dari API
-        const VOUCHER_API_URL = 'https://18223022.tesatepadang.space/vouchers';
-        console.log('🔄 Fetching from:', VOUCHER_API_URL);
-        
-        const response = await fetch(VOUCHER_API_URL);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('📦 API Response:', data);
-        console.log('📦 data.data:', data.data);
-        console.log('📦 Is data.data array?', Array.isArray(data.data));
-        
-        // Handle different response formats
-        if (Array.isArray(data)) {
-            console.log('✓ Format: Direct array');
-            availableVouchers = data;
-        } else if (data.data && Array.isArray(data.data)) {
-            console.log('✓ Format: data.data array');
-            availableVouchers = data.data;
-        } else if (data.vouchers && Array.isArray(data.vouchers)) {
-            console.log('✓ Format: data.vouchers array');
-            availableVouchers = data.vouchers;
-        } else {
-            console.log('❌ Unknown format, setting empty');
-            availableVouchers = [];
-        }
-        
-        console.log('📊 Before filter - Vouchers count:', availableVouchers.length);
-        console.log('📊 Before filter - Vouchers:', availableVouchers);
-        console.log('🏪 Restaurant ID:', orderData.restaurantId);
-        
-        // HAPUS FILTER - tampilkan semua voucher
-        // Tidak filter berdasarkan resto_id, tampilkan semua
+        // TODO: Fetch dari API voucher jika ada
+        // Untuk sementara, set empty array
+        availableVouchers = [];
         
         console.log('✅ Vouchers loaded:', availableVouchers.length);
-        console.log('🎫 Vouchers:', availableVouchers);
-        
     } catch (error) {
         console.error('⚠️ Error loading vouchers:', error);
         availableVouchers = [];
     }
-    
-    renderVoucherList();
 }
 
 function renderVoucherList() {
@@ -233,7 +196,7 @@ function renderVoucherList() {
     if (availableVouchers.length === 0) {
         container.innerHTML = `
             <div class="empty-vouchers">
-                <span class="empty-vouchers-icon">🎫</span>
+                <span class="empty-vouchers-icon"></span>
                 <p>Tidak ada voucher yang tersedia saat ini</p>
             </div>
         `;
@@ -247,53 +210,150 @@ function renderVoucherList() {
 }
 
 function createVoucherElement(voucher) {
-    console.log('🎫 Creating voucher element:', voucher);
-    
     const div = document.createElement('div');
     div.className = 'voucher-item';
 
-    // Map API fields - cek berbagai kemungkinan nama field
-    const voucherId = voucher.id_voucher || voucher.voucher_id || voucher.id;
-    const voucherName = voucher.nama_voucher || voucher.name || voucher.kode_voucher || 'Voucher';
-    const discountType = voucher.discount_type || voucher.type || 'FIXED';
-    const discountValue = voucher.discount_value || voucher.potongan || voucher.discount || voucher.amount || 0;
-    const stock = voucher.stok !== undefined ? voucher.stok : (voucher.stock !== undefined ? voucher.stock : 999);
-    const minPurchase = voucher.min_order_amount || voucher.minimal || voucher.min_purchase || voucher.minimum_purchase || 0;
-    const expiredDate = voucher.expired_date || voucher.end_date || voucher.valid_until || new Date().toISOString();
-    
-    console.log('📊 Mapped voucher data:', {
-        voucherId,
-        voucherName,
-        discountType,
-        discountValue,
-        stock,
-        minPurchase,
-        expiredDate
-    });
+    const expiredDate = new Date(voucher.expired_date).toLocaleDateString('id-ID', {
+        day: '2-digit || data.length === 0) {
+            console.warn('?? No data returned from catalog table for IDs:', itemIds);
+            return;
+        }
+        
+        console.log(`? Fetched ${data.length} items from catalog:`, data);
+        
+        // Update items dengan data lengkap dari catalog
+        orderData.items = orderData.items.map(item => {
+            const catalogItem = data.find(d => d.catalog_id === item.id);
+            if (catalogItem) {
+                // Gunakan kolom 'foto' dari CSV
+                const photoUrl = catalogItem.foto || '';
+                console.log(`? Processing ${catalogItem.nama_makanan}:`, {
+                    catalog_id: catalogItem.catalog_id,
+                    foto: catalogItem.foto,
+                    finalPhotoUrl: photoUrl
+                });
+                return {
+                    ...item,
+                    image_url: photoUrl,
+                    foto: catalogItem.foto,
+                    nama_makanan: catalogItem.nama_makanan
+                };
+            } else {
+                console.warn(`?? No catalog match found for item ID ${item.id}`);
+                return item;
+            }
+        });
+        
+        console.log('? Final items after update:', orderData.items);
+        
+        // Update localStorage
+        localStorage.setItem('platoo_cart', JSON.stringify({
+            items: orderData.items,
+            restaurantId: orderData.restaurantId
+        }));
+        
+        console.log('=== FETCH ITEM PHOTOS COMPLETED ===');
+    } catch (error) {
+        console.error('? Error in fetchItemPhotos:', error);
+    }
+}
 
-    const formattedExpiredDate = new Date(expiredDate).toLocaleDateString('id-ID', {
+async function loadCustomerInfo(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('full_name, email')
+            .eq('id', userId)
+            .single();
+
+        if (error) throw error;
+
+        if (data) {
+            const nameEl = document.getElementById('customerName');
+            const emailEl = document.getElementById('customerEmail');
+            if (nameEl) nameEl.value = data.full_name || '';
+            if (emailEl) emailEl.value = data.email || '';
+        }
+    } catch (error) {
+        console.error('Error loading customer info:', error);
+    }
+}
+
+async function loadAvailableVouchers() {
+    try {
+        console.log('??? Loading vouchers for restaurant ID:', orderData.restaurantId);
+        const today = new Date().toISOString().split('T')[0];
+        console.log('?? Today date for comparison:', today);
+
+        // Filter vouchers by restaurant ID
+        const { data, error } = await supabaseClient
+            .from('voucher')
+            .select('*')
+            .eq('resto_id', orderData.restaurantId);
+
+        console.log('?? Raw voucher query result:', { data, error });
+
+        if (error) {
+            console.error('? Supabase error loading vouchers:', error);
+            throw error;
+        }
+
+        // Show all vouchers from the restaurant
+        if (data && data.length > 0) {
+            console.log('?? All vouchers from database:', data);
+            availableVouchers = data.sort((a, b) => b.potongan - a.potongan);
+            console.log('? Available vouchers:', availableVouchers);
+        } else {
+            availableVouchers = [];
+            console.log('?? No vouchers found for this restaurant');
+        }
+
+        renderVoucherList();
+    } catch (error) {
+        console.error('? Error loading vouchers:', error);
+        availableVouchers = [];
+        renderVoucherList();
+    }
+}
+
+function renderVoucherList() {
+    const container = document.getElementById('voucherList');
+    container.innerHTML = '';
+
+    if (availableVouchers.length === 0) {
+        container.innerHTML = `
+            <div class="empty-vouchers">
+                <span class="empty-vouchers-icon">??</span>
+                <p>Tidak ada voucher yang tersedia saat ini</p>
+            </div>
+        `;
+        return;
+    }
+
+    availableVouchers.forEach((voucher) => {
+        const voucherElement = createVoucherElement(voucher);
+        container.appendChild(voucherElement);
+    });
+}
+
+function createVoucherElement(voucher) {
+    const div = document.createElement('div');
+    div.className = 'voucher-item';
+
+    const expiredDate = new Date(voucher.expired_date).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'short',
         year: 'numeric'
     });
 
-    const isSelected = orderData.selectedVoucherId == voucherId;
-    const isOutOfStock = stock <= 0;
+    const isSelected = orderData.selectedVoucherId == voucher.voucher_id;
+    const isOutOfStock = voucher.stok <= 0;
     
     // Check if order meets minimum requirement
-    const minimalOrder = Number(minPurchase) || 0;
+    const minimalOrder = Number(voucher.minimal) || 0;
     const currentSubtotal = orderData.subtotal || 0;
     const meetsMinimum = currentSubtotal >= minimalOrder;
     const canApply = !isOutOfStock && meetsMinimum;
-
-    console.log('✓ Voucher validation:', {
-        voucherName,
-        isOutOfStock,
-        meetsMinimum,
-        canApply,
-        currentSubtotal,
-        minimalOrder
-    });
 
     if (!canApply) {
         div.classList.add('disabled');
@@ -304,23 +364,21 @@ function createVoucherElement(voucher) {
             type="radio"
             name="voucher"
             class="voucher-radio"
-            data-voucher-id="${voucherId}"
+            data-voucher-id="${voucher.voucher_id}"
             ${isSelected ? 'checked' : ''}
             ${!canApply ? 'disabled' : ''}
         >
         <div class="voucher-checkbox"></div>
         <div class="voucher-content">
-            <div class="voucher-code">${voucherName}</div>
-            <div class="voucher-discount">Potongan ${discountType === 'PERCENT' ? discountValue + '%' : formatCurrency(discountValue)}</div>
+            <div class="voucher-code">${voucher.nama_voucher}</div>
+            <div class="voucher-discount">Potongan ${formatCurrency(voucher.potongan)}</div>
             <div class="voucher-validity">
-                <span>Berlaku hingga ${formattedExpiredDate}</span>
-                <span style="margin-left: 0.5rem;">• Stok: ${stock}</span>
+                <span>Berlaku hingga ${expiredDate}</span>
+                <span style="margin-left: 0.5rem; color: ${voucher.stok > 5 ? 'var(--success)' : 'var(--warning)'};">� Stok: ${voucher.stok}</span>
             </div>
             ${!meetsMinimum ? `<div class="voucher-min-order">Min. pembelian ${formatCurrency(minimalOrder)}</div>` : ''}
-            ${!canApply && isOutOfStock ? `<div class="voucher-min-order">Stok habis</div>` : ''}
         </div>
     `;
-    
     // Reflect selected state visually
     if (isSelected) div.classList.add('selected');
 
@@ -328,21 +386,8 @@ function createVoucherElement(voucher) {
     if (!canApply) {
         div.style.cursor = 'not-allowed';
         div.style.opacity = '0.5';
-        div.style.backgroundColor = '#f5f5f5';
         return div;
     }
-
-    // Store voucher data in element for easy access
-    const voucherData = {
-        id: voucherId,
-        voucher_id: voucherId,
-        nama_voucher: voucherName,
-        discount_type: discountType,
-        discount_value: discountValue,
-        potongan: discountValue,
-        stok: stock,
-        minimal: minPurchase
-    };
 
     // Single click handler for the entire card
     div.addEventListener('click', (e) => {
@@ -350,39 +395,20 @@ function createVoucherElement(voucher) {
         e.preventDefault();
         
         const input = div.querySelector('input[name="voucher"]');
-        const currentlySelected = orderData.selectedVoucherId == voucherId;
+        const currentlySelected = orderData.selectedVoucherId == voucher.voucher_id;
 
         if (currentlySelected) {
             // Deselect
             if (input) input.checked = false;
-            document.querySelectorAll('.voucher-item').forEach(el => {
-                el.classList.remove('selected');
-                // Re-enable other vouchers and reset styles
-                if (!el.classList.contains('disabled')) {
-                    el.style.opacity = '1';
-                    el.style.backgroundColor = '';
-                }
-            });
+            document.querySelectorAll('.voucher-item').forEach(el => el.classList.remove('selected'));
             selectVoucher(null);
         } else {
             // Select this voucher and uncheck others
             document.querySelectorAll('input[name="voucher"]').forEach(r => r.checked = false);
             if (input) input.checked = true;
-            
-            // Visual feedback: gray out other vouchers
-            document.querySelectorAll('.voucher-item').forEach(el => {
-                el.classList.remove('selected');
-                if (el !== div && !el.classList.contains('disabled')) {
-                    el.style.opacity = '0.5';
-                    el.style.backgroundColor = '#f5f5f5';
-                }
-            });
-            
+            document.querySelectorAll('.voucher-item').forEach(el => el.classList.remove('selected'));
             div.classList.add('selected');
-            div.style.opacity = '1';
-            div.style.backgroundColor = '';
-            
-            selectVoucher(voucherData);
+            selectVoucher(voucher);
         }
     }, { capture: true });
 
@@ -707,21 +733,11 @@ function selectVoucher(voucher) {
         }
 
         // Select voucher
-        orderData.selectedVoucherId = voucher.voucher_id || voucher.id_voucher || voucher.id;
+        orderData.selectedVoucherId = voucher.voucher_id;
         orderData.selectedVoucher = voucher;
 
-        // Calculate discount based on type
-        const discountType = voucher.discount_type || voucher.type || 'FIXED';
-        const discountValue = Number(voucher.discount_value || voucher.potongan || voucher.discount || 0);
-        let discountAmount = 0;
-
-        if (discountType === 'PERCENT') {
-            // Calculate percentage of subtotal (tanpa PPN)
-            discountAmount = (orderData.subtotal * discountValue) / 100;
-        } else {
-            // FIXED discount
-            discountAmount = discountValue;
-        }
+        // Use potongan (fixed discount amount) from voucher
+        const discountAmount = Number(voucher.potongan);
 
         // Map voucher discount to 'restaurantDiscount' (Diskon Platoo) per request
         orderData.restaurantDiscount = discountAmount;

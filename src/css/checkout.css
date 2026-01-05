@@ -505,10 +505,11 @@ body {
 }
 
 .voucher-code {
-    font-weight: 700;
-    color: var(--purple-dark);
-    margin-bottom: 0.25rem;
-    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.3;
 }
 
 .voucher-description {
@@ -519,24 +520,25 @@ body {
 
 .voucher-discount {
     font-weight: 600;
-    color: var(--success);
-    font-size: 0.9rem;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
 }
 
 .voucher-validity {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-lighter);
-    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
 }
 
 .voucher-min-order {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--error);
-    margin-top: 0.5rem;
-    font-weight: 500;
+    margin-top: 0.25rem;
+    font-weight: 400;
 }
 
 .voucher-item.disabled {
