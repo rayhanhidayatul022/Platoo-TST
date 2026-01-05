@@ -1,8 +1,3 @@
-/**
- * Voucher Edit Form
- * Integrated with Voucher Microservice API
- */
-
 let voucherService;
 let voucherId = null;
 let currentVoucher = null;

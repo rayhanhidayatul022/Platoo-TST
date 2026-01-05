@@ -1,8 +1,3 @@
-/**
- * Voucher Add Form
- * Integrated with Voucher Microservice API
- */
-
 let voucherService;
 
 async function handleSubmit(e) {

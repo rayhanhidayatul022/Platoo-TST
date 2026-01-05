@@ -1,10 +1,4 @@
-﻿/**
- * Voucher Catalog Management
- * Integrated with Voucher Microservice API
- */
-
-// Voucher state
-let voucherList = [];
+﻿let voucherList = [];
 let voucherService;
 
 async function fetchCatalogData() {

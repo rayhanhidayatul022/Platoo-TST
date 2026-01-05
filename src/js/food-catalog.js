@@ -1,15 +1,9 @@
-﻿/**
- * Food Catalog Management
- * Integrated with Katalog Makanan Microservice API
- */
-
-// Food catalog state
+﻿
 let foodList = [];
 let katalogService;
 
 async function fetchCatalogData() {
     try {
-        // Ensure katalogService is initialized
         if (!katalogService) {
             console.error('❌ KatalogService not initialized!');
             throw new Error('KatalogService not initialized');

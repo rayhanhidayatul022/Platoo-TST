@@ -5,9 +5,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 let currentRestaurant = null;
 let allMenuItems = [];
-let cart = {}; // { itemId: quantity }
+let cart = {}; 
 
-// Get restaurant ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const restaurantId = urlParams.get('id');
 
@@ -22,7 +21,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Setup event listeners FIRST (before loading menu)
     setupEventListeners();
     
     await loadRestaurantInfo();
@@ -30,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 function setupEventListeners() {
-    // Event delegation untuk semua button di menu grid
     document.addEventListener('click', function(e) {
         const target = e.target.closest('button[data-action]');
         if (!target) return;
@@ -102,7 +99,6 @@ async function loadRestaurantInfo() {
 function displayRestaurantInfo(restaurant) {
     const rating = restaurant.rate ? restaurant.rate.toFixed(1) : '0.0';
     
-    // Navbar
     document.getElementById('restaurantName').textContent = restaurant.nama_restoran;
     document.getElementById('restaurantRating').innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#FFD700" style="vertical-align: middle; margin-right: 4px;">
@@ -111,7 +107,6 @@ function displayRestaurantInfo(restaurant) {
         ${rating}`;
     document.getElementById('restaurantAddress').textContent = truncateText(restaurant.alamat, 30);
 
-    // Header
     document.getElementById('headerName').textContent = restaurant.nama_restoran;
     document.getElementById('headerRating').innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFD700" style="vertical-align: middle; margin-right: 4px;">
@@ -124,7 +119,6 @@ function displayRestaurantInfo(restaurant) {
         </svg>
         ${restaurant.nomor_telepon}`;
 
-    // Set header background if photo available
     if (restaurant.foto_url && restaurant.foto_url.trim() !== '') {
         const headerImage = document.getElementById('headerImage');
         headerImage.style.backgroundImage = `url('${restaurant.foto_url}')`;
@@ -146,7 +140,6 @@ async function loadMenuItems() {
         emptyState.style.display = 'none';
         menuGrid.innerHTML = '';
 
-        // First, check if catalog table has ANY data
         console.log('Test 1: Checking if catalog table has any data...');
         const { data: allCatalog, error: allError } = await supabaseClient
             .from('catalog')
@@ -161,7 +154,6 @@ async function loadMenuItems() {
             console.log('Available resto_id values:', [...new Set(allCatalog.map(item => item.resto_id))]);
         }
 
-        // Convert to integer for database query
         const restoId = parseInt(restaurantId, 10);
         
         if (isNaN(restoId)) {
@@ -170,7 +162,6 @@ async function loadMenuItems() {
         
         console.log('Test 2: Parsed resto_id:', restoId, '(type:', typeof restoId, ')');
 
-        // Try to fetch specific restaurant's menu
         console.log('Test 3: Fetching menu for resto_id =', restoId);
         
         const { data: menuItems, error } = await supabaseClient
@@ -184,7 +175,6 @@ async function loadMenuItems() {
         console.log('Data:', menuItems);
         console.log('Number of items found:', menuItems?.length || 0);
         
-        // Debug: Check if items have ID
         if (menuItems && menuItems.length > 0) {
             console.log('First item structure:', menuItems[0]);
             console.log('First item ID:', menuItems[0].id, 'type:', typeof menuItems[0].id);
@@ -195,7 +185,6 @@ async function loadMenuItems() {
             throw error;
         }
 
-        // Debug: Manual filter to double check
         if (allCatalog) {
             const manualFilter = allCatalog.filter(item => item.resto_id == restoId || item.resto_id === restoId);
             console.log('Manual filter result (using ==):', manualFilter.length, 'items');
@@ -242,16 +231,14 @@ function displayMenuItems(items) {
 function createMenuCard(item) {
     console.log('Creating card for item:', JSON.stringify(item));
     
-    // CRITICAL: Check if item has ID
     if (!item || !item.id) {
         console.error('Item has no ID!', item);
-        // Try to use alternative ID field if available
         if (item && item.catalog_id) {
             console.warn('Using catalog_id as fallback:', item.catalog_id);
             item.id = item.catalog_id;
         } else {
             console.error('Cannot create card without ID');
-            return document.createElement('div'); // Return empty div
+            return document.createElement('div'); 
         }
     }
     
@@ -261,30 +248,24 @@ function createMenuCard(item) {
     const card = document.createElement('div');
     card.setAttribute('data-item-id', itemId);
     
-    // Check stock status
     const stok = item.stok || 0;
     const isAvailable = stok > 0;
     
-    // Check if this item is in cart
     const itemQty = getItemQuantity(itemId);
     
-    // Check if cart has other item (for inactive state)
     const cartItemIds = Object.keys(cart).filter(id => cart[id] > 0);
     const isInCart = cartItemIds.includes(String(itemId));
     const hasOtherItem = cartItemIds.length > 0 && !isInCart;
     
-    // Add classes - produk lain jadi inactive kalau sudah ada yang dipilih
     let cardClass = 'menu-card';
     if (!isAvailable) cardClass += ' inactive';
     if (hasOtherItem) cardClass += ' inactive disabled';
     
     card.className = cardClass;
 
-    // Food/drink emojis
     const emojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '??', '?', '??'];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-    // Check for photo - try multiple possible field names
     const photoUrl = item.foto_menu || item.photo_url || item.image_url || item.foto || '';
     const hasPhoto = photoUrl && photoUrl.trim() !== '';
     
@@ -347,14 +328,11 @@ function createMenuCard(item) {
     return card;
 }
 
-// Cart Management Functions
 function getItemQuantity(itemId) {
-    // Convert to number untuk konsistensi
     const id = parseInt(itemId);
     return cart[id] || 0;
 }
 
-// Update single card quantity display
 function updateCardQuantityDisplay(itemId) {
     const controls = document.querySelector(`.quantity-controls[data-item-id="${itemId}"]`);
     if (!controls) {
@@ -396,7 +374,7 @@ function updateCardQuantityDisplay(itemId) {
     }
 }
 
-// Refresh all cards inactive/active state
+
 function refreshCardsState() {
     const cartItemIds = Object.keys(cart)
         .filter(id => cart[id] > 0)

@@ -1,11 +1,6 @@
-/**
- * Food Add Form
- * Integrated with Katalog Microservice API
- */
-
 let katalogService;
 
-// Supabase configuration for image upload
+
 const SUPABASE_URL = 'https://nxamzwahwgakiatujxug.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YW16d2Fod2dha2lhdHVqeHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDkwMjcsImV4cCI6MjA4MDU4NTAyN30.9nBRbYXKJmLcWbKcx0iICDNisdQNCg0dFjI_JGVt5pk';
 
@@ -18,7 +13,7 @@ async function uploadImageToSupabase(file) {
     try {
         const fileName = `food_${Date.now()}_${file.name}`;
         
-        // Upload to Supabase Storage
+
         const formData = new FormData();
         formData.append('file', file);
         
@@ -34,7 +29,7 @@ async function uploadImageToSupabase(file) {
             throw new Error('Upload failed');
         }
         
-        // Get public URL
+    
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/resto-photos/katalog/${fileName}`;
         return publicUrl;
     } catch (error) {
@@ -55,14 +50,12 @@ async function handleSubmit(e) {
     const originalHTML = submitBtn ? submitBtn.innerHTML : '';
     
     try {
-        // Check if katalogService is initialized
         if (!katalogService) {
             console.error('❌ KatalogService not initialized!');
             await Utils.showAlert('Service belum siap, silakan refresh halaman', 'error');
             return false;
         }
         
-        // Check authentication
         console.log('🔒 Checking authentication...');
         if (!Utils.requireAuth()) {
             console.log('❌ Not authenticated');
@@ -80,10 +73,8 @@ async function handleSubmit(e) {
         submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="animation: spin 0.8s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Menyimpan...';
         submitBtn.disabled = true;
 
-        // Collect form data
         console.log('📝 Collecting form data...');
         
-        // Handle image upload to Supabase first if file selected
         let imageUrl = '';
         const imageInput = document.getElementById('image');
         if (imageInput && imageInput.files && imageInput.files[0]) {
@@ -94,11 +85,10 @@ async function handleSubmit(e) {
             } catch (uploadError) {
                 console.error('❌ Image upload failed:', uploadError);
                 await Utils.showAlert('Gagal mengupload gambar. Lanjutkan tanpa gambar?', 'warning');
-                // Continue without image
             }
         }
         
-        // Prepare JSON data for API
+    
         const formData = {
             name: document.getElementById('nama_makanan').value.trim(),
             price: parseInt(document.getElementById('harga').value),
@@ -155,10 +145,8 @@ async function handleSubmit(e) {
         submitBtn.innerHTML = originalHTML;
         submitBtn.disabled = false;
 
-        // Show success message
         await Utils.showAlert('Makanan berhasil ditambahkan!', 'success');
 
-        // Redirect to catalog
         window.location.href = 'food-catalog.html';
 
     } catch (error) {
@@ -180,7 +168,6 @@ async function handleSubmit(e) {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('✨ Food Add page loaded');
     
-    // Initialize service
     try {
         console.log('🔧 Initializing KatalogService...');
         katalogService = new KatalogService();
