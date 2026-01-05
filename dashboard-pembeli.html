@@ -21,10 +21,18 @@
                     <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <input type="text" id="searchInput" placeholder="Cari restoran favorit Anda...">
+                    <input type="text" id="searchInput" placeholder="Cari makanan favorit Anda...">
                 </div>
             </div>
             <div class="nav-right">
+                <button class="btn-cart" onclick="window.location.href='checkout.html'" title="Keranjang">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
                 <button class="btn-history" onclick="window.location.href='history-pembelian.html'" title="Riwayat Pembelian">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3v5h5"></path>
@@ -67,7 +75,7 @@
             <!-- Filter Section -->
             <div class="filter-section">
                 <div class="filter-left">
-                    <h2>Restoran Tersedia (<span id="totalRestaurants">0</span>)</h2>
+                    <h2>Menu Makanan (<span id="totalFoods">0</span>)</h2>
                     <div class="filter-buttons">
                         <button class="filter-btn active" data-filter="all">
                             <span>Semua</span>
@@ -77,38 +85,24 @@
                             <span>Ada Stok</span>
                             <span class="filter-count" id="countAvailable">0</span>
                         </button>
-                        <button class="filter-btn" data-filter="popular">
-                            <span>Populer</span>
-                            <span class="filter-count" id="countPopular">0</span>
-                        </button>
                     </div>
                 </div>
-                <button class="filter-icon-btn" id="advancedFilterBtn" title="Filter Lanjutan">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="4" y1="6" x2="20" y2="6"></line>
-                        <line x1="4" y1="12" x2="20" y2="12"></line>
-                        <line x1="4" y1="18" x2="20" y2="18"></line>
-                        <circle cx="16" cy="6" r="2"></circle>
-                        <circle cx="8" cy="12" r="2"></circle>
-                        <circle cx="16" cy="18" r="2"></circle>
-                    </svg>
-                </button>
             </div>
 
             <!-- Loading State -->
             <div class="loading-state" id="loadingState">
                 <div class="loading-spinner"></div>
-                <p>Memuat restoran...</p>
+                <p>Memuat menu makanan...</p>
             </div>
 
             <!-- Empty State -->
             <div class="empty-state" id="emptyState" style="display: none;">
-                <h3>Belum Ada Restoran</h3>
-                <p>Restoran akan muncul di sini setelah terdaftar</p>
+                <h3>Belum Ada Menu</h3>
+                <p>Menu makanan akan muncul di sini</p>
             </div>
 
-            <!-- Restaurant Grid -->
-            <div class="restaurant-grid" id="restaurantGrid">
+            <!-- Food Grid -->
+            <div class="restaurant-grid" id="foodGrid">
                 <!-- Cards will be inserted here by JavaScript -->
             </div>
         </div>
@@ -122,6 +116,9 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="src/js/dashboard-pembeli.js"></script>
+    <script type="module" src="src/js/dashboard-pembeli.js"></script>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>
