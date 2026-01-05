@@ -5,25 +5,35 @@
 
 // Food catalog state
 let foodList = [];
+let katalogService;
 
 async function fetchCatalogData() {
     try {
+        // Ensure katalogService is initialized
+        if (!katalogService) {
+            console.error('❌ KatalogService not initialized!');
+            throw new Error('KatalogService not initialized');
+        }
+        
         Utils.showLoading(true);
         
         // Fetch all foods from API
+        console.log('🔄 Fetching foods from API...');
+        console.log('🔧 KatalogService:', katalogService);
+        console.log('🌐 Base URL:', katalogService.baseUrl);
+        
         const foods = await katalogService.getAllFoods();
         
         console.log('✅ Foods fetched from API:', foods);
         
-        // Filter by restaurant if needed
-        const userData = Utils.getCurrentUser();
-        if (userData && userData.id) {
-            // Filter foods by restaurant ID if your API supports it
-            // For now, show all foods
-            foodList = Array.isArray(foods) ? foods : [];
-        } else {
-            foodList = Array.isArray(foods) ? foods : [];
+        // Filter by restaurant ID = 1
+        let filteredFoods = [];
+        if (Array.isArray(foods)) {
+            filteredFoods = foods.filter(food => food.resto_id === 1 || food.resto_id === '1');
+            console.log('✅ Filtered foods (resto_id = 1):', filteredFoods);
         }
+        
+        foodList = filteredFoods;
         
         Utils.showLoading(false);
         return foodList;
@@ -40,91 +50,157 @@ async function fetchCatalogData() {
 
 
 function renderCatalogTable(catalogItems) {
-    const tbody = document.querySelector('.table tbody');
+    const foodGrid = document.getElementById('foodGrid');
+    
+    if (!foodGrid) {
+        console.error('❌ Food grid element not found!');
+        return;
+    }
 
-    tbody.innerHTML = '';
+    foodGrid.innerHTML = '';
     
     if (catalogItems.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; padding:40px; color:#999;">
-                    Belum ada makanan di katalog. Klik "Tambah Makanan Baru" untuk mulai.
-                </td>
-            </tr>
+        foodGrid.innerHTML = `
+            <div class="empty-state">
+                <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                <h3>Belum Ada Makanan</h3>
+                <p>Katalog makanan Anda masih kosong.<br>Mulai tambahkan makanan untuk resto ID 1.</p>
+                <button class="btn-add-from-empty" onclick="window.location.href='food-add.html'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Makanan Baru
+                </button>
+            </div>
         `;
         return;
     }
 
     catalogItems.forEach(item => {
-        const row = createTableRow(item);
-        tbody.appendChild(row);
+        const card = createFoodCard(item);
+        foodGrid.appendChild(card);
     });
 }
 
 
-function createTableRow(item) {
-    const tr = document.createElement('tr');
+function createFoodCard(item) {
+    const div = document.createElement('div');
+    div.className = 'food-card';
     
     // Format data from API response
     const foodName = item.name || item.nama_makanan || '-';
-    const price = Utils.formatCurrency(item.price || item.harga || 0);
+    const price = item.price || item.harga || 0;
     const stock = item.stock || item.stok || 0;
     const imageUrl = item.image_url || item.foto || '/src/img/placeholder-food.png';
     const description = item.description || item.deskripsi || '';
     
-    // Status handling
-    const isActive = item.is_active !== false; // default true if not set
-    const statusClass = isActive ? 'active' : 'inactive';
-    const statusBadge = isActive 
-        ? '<span style="color: #10b981;">● Tersedia</span>' 
-        : '<span style="color: #ef4444;">● Tidak Tersedia</span>';
+    // Status handling - if stock is 0 or is_active is false, show "Habis"
+    const isAvailable = stock > 0 && (item.is_active !== false);
+    const statusClass = isAvailable ? 'status-tersedia' : 'status-habis';
+    const statusText = isAvailable ? 'Tersedia' : 'Habis';
     
-    // Add opacity to row if inactive
-    if (!isActive) {
-        tr.style.opacity = '0.7';
-    }
-    
-    tr.innerHTML = `
-        <td style="width:120px;">
-            <img src="${imageUrl}" alt="${foodName}" 
-                 style="width:100px;height:70px;object-fit:cover;border-radius:8px;"
-                 onerror="this.src='/src/img/placeholder-food.png'">
-        </td>
-        <td>
-            <strong>${foodName}</strong>
-            ${description ? `<br><small style="color: #666;">${description.substring(0, 50)}${description.length > 50 ? '...' : ''}</small>` : ''}
-        </td>
-        <td>${stock}</td>
-        <td>${price}</td>
-        <td>${statusBadge}</td>
-        <td class="actions">
-            <div class="action-buttons">
-                <a href="food-edit.html?id=${item.id}" class="btn-edit" title="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                </a>
-                <button class="btn-toggle ${statusClass}" title="${isActive ? 'Nonaktifkan' : 'Aktifkan'}" 
-                        onclick="handleToggleStatus('${item.id}', '${foodName}', ${isActive})">
-                    ${isActive ? 
-                        `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>` : 
-                        `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                        </svg>`
-                    }
-                </button>
+    div.innerHTML = `
+        <img src="${imageUrl}" alt="${foodName}" class="food-image" 
+             onerror="this.src='/src/img/placeholder-food.png'">
+        
+        <div class="card-header">
+            <div class="food-info">
+                <div class="food-name">${foodName}</div>
             </div>
-        </td>
+            <span class="status-badge ${statusClass}">
+                <span class="status-dot"></span>
+                ${statusText}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <div class="info-label">Harga per Porsi</div>
+                        <div class="info-value">${Utils.formatCurrency(price)}</div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <div>
+                        <div class="info-label">Stok Tersedia</div>
+                        <div class="info-value">${stock} Porsi</div>
+                    </div>
+                </div>
+                
+                ${description ? `
+                <div class="info-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                        <div class="info-label">Deskripsi</div>
+                        <div class="info-value">${description.substring(0, 80)}${description.length > 80 ? '...' : ''}</div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        
+        <div class="card-actions">
+            <a href="food-edit.html?id=${item.id}" class="btn-action btn-edit">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+            </a>
+            <button class="btn-action btn-delete" onclick="handleDelete('${item.id}', '${foodName}')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Hapus
+            </button>
+        </div>
     `;
     
-    return tr;
+    return div;
 }
 
+
+
+async function handleDelete(foodId, foodName) {
+    const confirmed = await Utils.showConfirm(
+        `Yakin ingin menghapus "${foodName}"? Tindakan ini tidak dapat dibatalkan.`,
+        'Hapus Makanan'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        Utils.showLoading(true);
+        
+        // Delete food via API
+        await katalogService.deleteFood(foodId);
+        
+        Utils.showLoading(false);
+        
+        await Utils.showAlert('Makanan berhasil dihapus!', 'success');
+        
+        // Reload catalog
+        await loadCatalog();
+        
+    } catch (error) {
+        console.error('Error deleting food:', error);
+        Utils.showLoading(false);
+        
+        const errorMsg = Utils.handleApiError(error);
+        await Utils.showAlert(`Gagal menghapus makanan: ${errorMsg}`, 'error');
+    }
+}
 
 async function handleToggleStatus(foodId, foodName, currentStatus) {
     const newStatus = !currentStatus;
@@ -179,7 +255,21 @@ async function loadCatalog() {
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Food Catalog page loaded');
-    loadCatalog();
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('✨ Food Catalog page loaded');
+    
+    // Initialize service
+    try {
+        console.log('🔧 Initializing KatalogService...');
+        katalogService = new KatalogService();
+        console.log('✅ KatalogService initialized:', katalogService);
+        console.log('✅ Base URL:', katalogService.baseUrl);
+    } catch (error) {
+        console.error('❌ Error initializing KatalogService:', error);
+        await Utils.showAlert('Gagal menginisialisasi service katalog', 'error');
+        return;
+    }
+    
+    // Load catalog after service is initialized
+    await loadCatalog();
 });
