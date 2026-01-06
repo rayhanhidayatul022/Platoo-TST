@@ -398,7 +398,7 @@ body {
 /* Restaurant Grid */
 .restaurant-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 2rem;
 }
 
@@ -607,21 +607,21 @@ body {
 .card-button,
 .btn-order {
     width: 100%;
-    padding: 14px 24px;
+    padding: 8px 16px;
     background: linear-gradient(135deg, var(--purple-dark), var(--purple-medium));
     color: white;
     border: none;
-    border-radius: 16px;
-    font-weight: 700;
-    font-size: 15px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: 'Poppins', sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    box-shadow: 0 4px 12px rgba(107, 17, 153, 0.2);
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(107, 17, 153, 0.2);
     position: relative;
     overflow: hidden;
 }
