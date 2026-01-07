@@ -39,7 +39,11 @@ Setelah mengimplementasikan spesifikasi bonus (menerapkan prosedur authenticatio
 2. Mengakses manajemen voucher  
 3. Melakukan checkout  
 
-pada aplikasi web kami:  
+Adapun pembagian tugas dalam melakukan integrasi layanan dan untuk implementasi Frontend sebagai berikut : 
+1. **Halaman Catalog Pembeli – Mengambil semua data catalog makanan** : **Rayhan Hidayatul Fikri**
+2. **Halaman Pembayaran dan Penggunaan Voucher – Mengambil data voucher** : **Princessfa Azzahra Alvin**
+
+Layanan ini dapat diakses pada aplikasi web kami:  
 https://platoo-tst.vercel.app/
 
 ---
